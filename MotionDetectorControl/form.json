@@ -82,7 +82,7 @@
         },
         {
             "type": "Label",
-            "caption": "Einschaltwert (bei Bewegung erkannt)"
+            "caption": "Standard Einschaltwert (wenn kein Zeitplan greift)"
         },
         {
             "type": "RowLayout",
@@ -139,6 +139,51 @@
                     "caption": "String AUS"
                 }
             ]
+        },
+        {
+            "type": "Label",
+            "caption": " "
+        },
+        {
+            "type": "Label",
+            "caption": "Zeitplan (optionale Einschaltwerte nach Uhrzeit)"
+        },
+        {
+            "type": "List",
+            "name": "TimeSchedule",
+            "caption": "Zeitplan",
+            "rowCount": 5,
+            "add": true,
+            "delete": true,
+            "columns": [
+                {
+                    "caption": "Von",
+                    "name": "From",
+                    "width": "150px",
+                    "add": "07:00",
+                    "edit": {
+                        "type": "ValidationTextBox"
+                    }
+                },
+                {
+                    "caption": "Bis",
+                    "name": "To",
+                    "width": "150px",
+                    "add": "22:00",
+                    "edit": {
+                        "type": "ValidationTextBox"
+                    }
+                },
+                {
+                    "caption": "Einschaltwert",
+                    "name": "Value",
+                    "width": "auto",
+                    "add": "",
+                    "edit": {
+                        "type": "ValidationTextBox"
+                    }
+                }
+            ]
         }
     ],
     "actions": [
@@ -154,8 +199,8 @@
         }
     ],
     "status": [
-        {"code": 102, "icon": "active",   "caption": "Bereit"},
-        {"code": 200, "icon": "error",    "caption": "Fehler: Ziel-Variable nicht gesetzt"},
-        {"code": 201, "icon": "error",    "caption": "Fehler: Kein Bewegungsmelder konfiguriert"}
+        {"code": 102, "icon": "active", "caption": "Bereit"},
+        {"code": 200, "icon": "error",  "caption": "Fehler: Ziel-Variable nicht gesetzt"},
+        {"code": 201, "icon": "error",  "caption": "Fehler: Kein Bewegungsmelder konfiguriert"}
     ]
 }
