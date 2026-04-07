@@ -4,5 +4,9 @@
     "type": 3,
     "vendor": "Christian Hagedorn",
     "aliases": [],
-    "dependencies": []
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "MDC",
+    "url": ""
 }
