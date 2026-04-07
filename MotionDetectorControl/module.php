@@ -89,16 +89,16 @@ class MotionDetectorControl extends IPSModule
         $type = $this->ReadPropertyInteger('TargetVariableType');
         switch ($type) {
             case 0:
-                SetValueBoolean($targetID, $on ? $this->ReadPropertyBoolean('OnValueBool') : $this->ReadPropertyBoolean('OffValueBool'));
+                RequestAction($targetID, $on ? $this->ReadPropertyBoolean('OnValueBool') : $this->ReadPropertyBoolean('OffValueBool'));
                 break;
             case 1:
-                SetValueFloat($targetID, $on ? $this->ReadPropertyFloat('OnValueFloat') : $this->ReadPropertyFloat('OffValueFloat'));
+                RequestAction($targetID, $on ? $this->ReadPropertyFloat('OnValueFloat') : $this->ReadPropertyFloat('OffValueFloat'));
                 break;
             case 2:
-                SetValueInteger($targetID, $on ? $this->ReadPropertyInteger('OnValueInt') : $this->ReadPropertyInteger('OffValueInt'));
+                RequestAction($targetID, $on ? $this->ReadPropertyInteger('OnValueInt') : $this->ReadPropertyInteger('OffValueInt'));
                 break;
             case 3:
-                SetValueString($targetID, $on ? $this->ReadPropertyString('OnValueString') : $this->ReadPropertyString('OffValueString'));
+                RequestAction($targetID, $on ? $this->ReadPropertyString('OnValueString') : $this->ReadPropertyString('OffValueString'));
                 break;
         }
     }
