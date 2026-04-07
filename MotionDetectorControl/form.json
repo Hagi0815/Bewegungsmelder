@@ -145,12 +145,12 @@
         {
             "type": "Button",
             "caption": "Einschalten (Test)",
-            "onClick": "$module = new IPSModule($id); MDC_SwitchOn($id);"
+            "onClick": "MDC_SwitchOn($id); echo 'Eingeschaltet';"
         },
         {
             "type": "Button",
             "caption": "Ausschalten (Test)",
-            "onClick": "$module = new IPSModule($id); MDC_SwitchOff($id);"
+            "onClick": "MDC_SwitchOff($id); echo 'Ausgeschaltet';"
         }
     ],
     "status": [

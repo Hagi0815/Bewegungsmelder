@@ -52,7 +52,7 @@ class MotionDetectorControl extends IPSModule
         }
     }
 
-    public function SwitchOn(): void
+    public function SwitchOn(): bool
     {
         $targetID = $this->ReadPropertyInteger('TargetVariable');
         if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
@@ -69,13 +69,15 @@ class MotionDetectorControl extends IPSModule
             default: $seconds = $value; break;
         }
         $this->SetTimerInterval('SwitchOffTimer', $seconds * 1000);
+        return true;
     }
 
-    public function SwitchOff(): void
+    public function SwitchOff(): bool
     {
         $this->LogMessage('SwitchOff called', KL_MESSAGE);
         $this->SetTimerInterval('SwitchOffTimer', 0);
         $this->WriteTargetValue(false);
+        return true;
     }
 
     private function WriteTargetValue($on): void
