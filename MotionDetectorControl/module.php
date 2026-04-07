@@ -77,7 +77,7 @@ class MotionDetectorControl extends IPSModule
         $this->WriteTargetValue(false);
     }
 
-    private function WriteTargetValue(bool $on): void
+    private function WriteTargetValue($on): void
     {
         $targetID = $this->ReadPropertyInteger('TargetVariable');
         if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
@@ -87,7 +87,8 @@ class MotionDetectorControl extends IPSModule
         $type = $this->ReadPropertyInteger('TargetVariableType');
         switch ($type) {
             case 0:
-                RequestAction($targetID, $on ? $this->ReadPropertyBoolean('OnValueBool') : $this->ReadPropertyBoolean('OffValueBool'));
+                $boolVal = $on ? $this->ReadPropertyBoolean('OnValueBool') : $this->ReadPropertyBoolean('OffValueBool');
+                RequestAction($targetID, (bool) $boolVal);
                 break;
             case 1:
                 RequestAction($targetID, $on ? $this->ReadPropertyFloat('OnValueFloat') : $this->ReadPropertyFloat('OffValueFloat'));
