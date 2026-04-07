@@ -1,0 +1,12 @@
+{
+    "id": "{A7D3E2F1-4B5C-6D7E-8F9A-0B1C2D3E4F5A}",
+    "name": "MotionDetectorControl",
+    "type": 3,
+    "vendor": "Christian Hagedorn",
+    "aliases": [],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "MDC",
+    "url": ""
+}
