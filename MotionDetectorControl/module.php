@@ -54,52 +54,10 @@ class MotionDetectorControl extends IPSModule
 
     public function SwitchOn(): void
     {
-        $targetID = $this->ReadPropertyInteger('TargetVariable');
-        if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
-            return;
-        }
-
-        $this->WriteTargetValue(true);
-        $this->SetStatus(103);
-
-        $value = $this->ReadPropertyInteger('DurationValue');
-        $unit  = $this->ReadPropertyInteger('DurationUnit');
-        switch ($unit) {
-            case 1: $seconds = $value * 60; break;
-            case 2: $seconds = $value * 3600; break;
-            default: $seconds = $value; break;
-        }
-        $this->SetTimerInterval('SwitchOffTimer', $seconds * 1000);
     }
 
     public function SwitchOff(): void
     {
         $this->SetTimerInterval('SwitchOffTimer', 0);
-        $this->WriteTargetValue(false);
-        $this->SetStatus(102);
-    }
-
-    private function WriteTargetValue(bool $on): void
-    {
-        $targetID = $this->ReadPropertyInteger('TargetVariable');
-        if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
-            return;
-        }
-
-        $type = $this->ReadPropertyInteger('TargetVariableType');
-        switch ($type) {
-            case 0:
-                SetValueBoolean($targetID, $on ? $this->ReadPropertyBoolean('OnValueBool') : $this->ReadPropertyBoolean('OffValueBool'));
-                break;
-            case 1:
-                SetValueFloat($targetID, $on ? $this->ReadPropertyFloat('OnValueFloat') : $this->ReadPropertyFloat('OffValueFloat'));
-                break;
-            case 2:
-                SetValueInteger($targetID, $on ? $this->ReadPropertyInteger('OnValueInt') : $this->ReadPropertyInteger('OffValueInt'));
-                break;
-            case 3:
-                SetValueString($targetID, $on ? $this->ReadPropertyString('OnValueString') : $this->ReadPropertyString('OffValueString'));
-                break;
-        }
     }
 }
