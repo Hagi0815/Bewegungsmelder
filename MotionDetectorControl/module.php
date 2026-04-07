@@ -30,7 +30,6 @@ class MotionDetectorControl extends IPSModule
     {
         parent::ApplyChanges();
 
-        $this->UnregisterAllMessages();
 
         $ids = $this->GetConfiguredSensorIDs();
         foreach ($ids as $id) {
