@@ -73,6 +73,7 @@ class MotionDetectorControl extends IPSModule
 
     public function SwitchOff(): void
     {
+        $this->LogMessage('SwitchOff called', KL_MESSAGE);
         $this->SetTimerInterval('SwitchOffTimer', 0);
         $this->WriteTargetValue(false);
     }
