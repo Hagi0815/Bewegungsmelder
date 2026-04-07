@@ -1,0 +1,167 @@
+{
+    "elements": [
+        {
+            "type": "Label",
+            "caption": "Bewegungsmelder (bis zu 3)"
+        },
+        {
+            "type": "SelectVariable",
+            "name": "MotionSensor1",
+            "caption": "Bewegungsmelder 1",
+            "validVariableType": [0, 1, 2]
+        },
+        {
+            "type": "SelectVariable",
+            "name": "MotionSensor2",
+            "caption": "Bewegungsmelder 2 (optional)",
+            "validVariableType": [0, 1, 2]
+        },
+        {
+            "type": "SelectVariable",
+            "name": "MotionSensor3",
+            "caption": "Bewegungsmelder 3 (optional)",
+            "validVariableType": [0, 1, 2]
+        },
+        {
+            "type": "Label",
+            "caption": " "
+        },
+        {
+            "type": "Label",
+            "caption": "Einschaltdauer"
+        },
+        {
+            "type": "RowLayout",
+            "items": [
+                {
+                    "type": "NumberSpinner",
+                    "name": "DurationValue",
+                    "caption": "Dauer",
+                    "minimum": 1,
+                    "maximum": 9999
+                },
+                {
+                    "type": "Select",
+                    "name": "DurationUnit",
+                    "caption": "Einheit",
+                    "options": [
+                        {"caption": "Sekunden", "value": 0},
+                        {"caption": "Minuten",  "value": 1},
+                        {"caption": "Stunden",  "value": 2}
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "Label",
+            "caption": " "
+        },
+        {
+            "type": "Label",
+            "caption": "Ziel-Variable"
+        },
+        {
+            "type": "SelectVariable",
+            "name": "TargetVariable",
+            "caption": "Variable zum Schalten"
+        },
+        {
+            "type": "Select",
+            "name": "TargetVariableType",
+            "caption": "Variablentyp",
+            "options": [
+                {"caption": "Boolean", "value": 0},
+                {"caption": "Float",   "value": 1},
+                {"caption": "Integer", "value": 2},
+                {"caption": "String",  "value": 3}
+            ]
+        },
+        {
+            "type": "Label",
+            "caption": " "
+        },
+        {
+            "type": "Label",
+            "caption": "Einschaltwert (bei Bewegung erkannt)"
+        },
+        {
+            "type": "RowLayout",
+            "items": [
+                {
+                    "type": "CheckBox",
+                    "name": "OnValueBool",
+                    "caption": "Boolean EIN"
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "OnValueFloat",
+                    "caption": "Float EIN",
+                    "digits": 2
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "OnValueInt",
+                    "caption": "Integer EIN"
+                },
+                {
+                    "type": "ValidationTextBox",
+                    "name": "OnValueString",
+                    "caption": "String EIN"
+                }
+            ]
+        },
+        {
+            "type": "Label",
+            "caption": "Ausschaltwert (nach Ablauf der Zeit)"
+        },
+        {
+            "type": "RowLayout",
+            "items": [
+                {
+                    "type": "CheckBox",
+                    "name": "OffValueBool",
+                    "caption": "Boolean AUS"
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "OffValueFloat",
+                    "caption": "Float AUS",
+                    "digits": 2
+                },
+                {
+                    "type": "NumberSpinner",
+                    "name": "OffValueInt",
+                    "caption": "Integer AUS"
+                },
+                {
+                    "type": "ValidationTextBox",
+                    "name": "OffValueString",
+                    "caption": "String AUS"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "type": "Label",
+            "caption": "Test"
+        },
+        {
+            "type": "Button",
+            "caption": "Einschalten (Test)",
+            "onClick": "MDC_SwitchOn($id);"
+        },
+        {
+            "type": "Button",
+            "caption": "Ausschalten (Test)",
+            "onClick": "MDC_SwitchOff($id);"
+        }
+    ],
+    "status": [
+        {"code": 101, "icon": "inactive", "caption": "Instanz wird erstellt"},
+        {"code": 102, "icon": "active",   "caption": "Bereit - wartet auf Bewegung"},
+        {"code": 103, "icon": "active",   "caption": "Aktiv - Ziel eingeschaltet"},
+        {"code": 201, "icon": "error",    "caption": "Fehler: Ziel-Variable nicht gesetzt"},
+        {"code": 202, "icon": "error",    "caption": "Fehler: Kein Bewegungsmelder konfiguriert"}
+    ]
+}
