@@ -60,7 +60,7 @@ class MotionDetectorControl extends IPSModule
         }
 
         $this->WriteTargetValue(true);
-        $this->SetStatus(103);
+        $this->SetStatus(102);
 
         $value = $this->ReadPropertyInteger('DurationValue');
         $unit  = $this->ReadPropertyInteger('DurationUnit');
