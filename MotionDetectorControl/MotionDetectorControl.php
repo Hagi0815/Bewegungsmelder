@@ -40,7 +40,7 @@ class MotionDetectorControl extends IPSModule
         $this->RegisterAttributeBoolean('IsActive', false);
 
         // ── Timer ───────────────────────────────────────────────────────────
-        $this->RegisterTimer(self::TIMER_SWITCH_OFF, 0, 'MDC_SwitchOff($_IPS[\'TARGET\']);');
+        $this->RegisterTimer(self::TIMER_SWITCH_OFF, 0, 'MDC_SwitchOff($id);');
     }
 
     public function Destroy(): void
@@ -364,11 +364,14 @@ class MotionDetectorControl extends IPSModule
         $value = $this->ReadPropertyInteger('DurationValue');
         $unit  = $this->ReadPropertyInteger('DurationUnit');
 
-        return match ($unit) {
-            1 => $value * 60,          // Minuten
-            2 => $value * 3600,        // Stunden
-            default => $value,         // Sekunden
-        };
+        switch ($unit) {
+            case 1:
+                return $value * 60;
+            case 2:
+                return $value * 3600;
+            default:
+                return $value;
+        }
     }
 
     /** Liefert alle konfigurierten, gültigen Sensor-IDs */
@@ -390,7 +393,7 @@ class MotionDetectorControl extends IPSModule
      * Integer / Float: > 0
      * String: nicht leer
      */
-    private function IsTriggerActive(mixed $value): bool
+    private function IsTriggerActive($value): bool
     {
         if (is_bool($value)) {
             return $value === true;
