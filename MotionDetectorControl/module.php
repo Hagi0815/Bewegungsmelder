@@ -38,7 +38,7 @@ class MotionDetectorControl extends IPSModule
         }
     }
 
-    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
+    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
         if ($Message !== VM_UPDATE) {
             return;
