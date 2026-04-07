@@ -60,7 +60,6 @@ class MotionDetectorControl extends IPSModule
         }
 
         $this->WriteTargetValue(true);
-        $this->SetStatus(102);
 
         $value = $this->ReadPropertyInteger('DurationValue');
         $unit  = $this->ReadPropertyInteger('DurationUnit');
@@ -76,7 +75,6 @@ class MotionDetectorControl extends IPSModule
     {
         $this->SetTimerInterval('SwitchOffTimer', 0);
         $this->WriteTargetValue(false);
-        $this->SetStatus(102);
     }
 
     private function WriteTargetValue(bool $on): void
