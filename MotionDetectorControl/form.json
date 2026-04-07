@@ -145,12 +145,12 @@
         {
             "type": "Button",
             "caption": "Einschalten (Test)",
-            "onClick": "MDC_SwitchOn($id); echo 'Eingeschaltet';"
+            "onClick": "MDC_SwitchOn($id);"
         },
         {
             "type": "Button",
             "caption": "Ausschalten (Test)",
-            "onClick": "MDC_SwitchOff($id); echo 'Ausgeschaltet';"
+            "onClick": "MDC_SwitchOff($id);"
         }
     ],
     "status": [
