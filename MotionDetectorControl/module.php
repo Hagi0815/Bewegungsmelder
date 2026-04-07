@@ -26,6 +26,9 @@ class MotionDetectorControl extends IPSModule
         $this->RegisterPropertyString('OnValueString', 'EIN');
         $this->RegisterPropertyString('OffValueString', 'AUS');
 
+        // Zeitplan aktivieren/deaktivieren über externe Boolean-Variable
+        $this->RegisterPropertyInteger('TimeScheduleVariable', 0);
+
         // Zeitplan-Einträge als JSON-Array
         // Jeder Eintrag: {"From":"07:00","To":"10:00","Value":"0.5"}
         $this->RegisterPropertyString('TimeSchedule', '[]');
@@ -136,6 +139,14 @@ class MotionDetectorControl extends IPSModule
 
     private function GetScheduleValue()
     {
+        // Zeitplan-Variable prüfen: nicht gesetzt = immer aktiv
+        $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+        if ($scheduleVarID > 0 && IPS_VariableExists($scheduleVarID)) {
+            if (!GetValueBoolean($scheduleVarID)) {
+                return null;
+            }
+        }
+
         $scheduleJson = $this->ReadPropertyString('TimeSchedule');
         $schedule = json_decode($scheduleJson, true);
 
