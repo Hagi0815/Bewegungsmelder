@@ -149,7 +149,7 @@ class MotionDetectorControl extends IPSModule
     {
         $ids = [];
         foreach ([1, 2, 3] as $n) {
-            $id = $this->ReadPropertyInteger('MotionSensor{$n}');
+            $id = $this->ReadPropertyInteger("MotionSensor$n");
             if ($id > 0 && IPS_VariableExists($id)) {
                 $ids[] = $id;
             }
