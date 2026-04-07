@@ -23,7 +23,7 @@ class MotionDetectorControl extends IPSModule
         $this->RegisterPropertyInteger('OffValueInt', 0);
         $this->RegisterPropertyString('OnValueString', 'EIN');
         $this->RegisterPropertyString('OffValueString', 'AUS');
-        $this->RegisterTimer('SwitchOffTimer', 0, 'MDC_SwitchOff($id);');
+        $this->RegisterTimer('SwitchOffTimer', 0, 'MDC_SwitchOff(' . $this->InstanceID . ');');
     }
 
     public function ApplyChanges(): void
