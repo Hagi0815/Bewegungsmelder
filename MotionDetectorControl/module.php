@@ -322,6 +322,10 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
                     ]],
 
                     ['type' => 'ExpansionPanel', 'caption' => 'Einschalten', 'expanded' => true, 'items' => [
@@ -336,6 +340,10 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'CheckBox',      'name' => 'OnValueBool',  'caption' => 'Boolean EIN'],
                         ['type' => 'NumberSpinner', 'name' => 'OnValueFloat', 'caption' => 'Float EIN', 'digits' => 2],
                         ['type' => 'NumberSpinner', 'name' => 'OnValueInt',   'caption' => 'Integer EIN'],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
                     ]],
 
                     ['type' => 'ExpansionPanel', 'caption' => 'Ausschalten', 'expanded' => true, 'items' => [
