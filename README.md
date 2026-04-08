@@ -1,8 +1,8 @@
 # MotionDetectorControl – IP-Symcon Modul
 
 **Autor:** Christian Hagedorn  
-**GUID:** `{A7D3E2F1-4B5C-6D7E-8F9A-0B1C2D3E4F5A}`  
-**IPS-Version:** 7.0 / 8.0+
+
+**IPS-Version:** 8.0+
 
 ---
 
