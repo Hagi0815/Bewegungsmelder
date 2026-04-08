@@ -44,13 +44,29 @@ class MotionDetectorControl extends IPSModule
         $this->RegisterTimer('SwitchOffTimer', 0, 'MDC_SwitchOff(' . $this->InstanceID . ');');
         $this->RegisterTimer('CountdownTimer', 0, 'MDC_UpdateCountdown(' . $this->InstanceID . ');');
 
+        // Profile für Restlaufzeit
+        if (!IPS_VariableProfileExists('MDC.Seconds')) {
+            IPS_CreateVariableProfile('MDC.Seconds', 1);
+            IPS_SetVariableProfileText('MDC.Seconds', '', ' Sek.');
+        }
+        if (!IPS_VariableProfileExists('MDC.Minutes')) {
+            IPS_CreateVariableProfile('MDC.Minutes', 1);
+            IPS_SetVariableProfileText('MDC.Minutes', '', ' Min.');
+        }
+        if (!IPS_VariableProfileExists('MDC.Hours')) {
+            IPS_CreateVariableProfile('MDC.Hours', 1);
+            IPS_SetVariableProfileText('MDC.Hours', '', ' Std.');
+        }
+
         // Statusvariable Restlaufzeit
-        $this->RegisterVariableInteger('Restlaufzeit', 'Restlaufzeit (Sek.)', '', 0);
+        $this->RegisterVariableInteger('Restlaufzeit', 'Restlaufzeit', 'MDC.Seconds', 0);
     }
 
     public function ApplyChanges(): void
     {
         parent::ApplyChanges();
+
+        $this->UpdateRestlaufzeitProfile();
 
         for ($n = 1; $n <= 3; $n++) {
             $id = $this->ReadPropertyInteger('MotionSensor' . $n);
@@ -100,7 +116,7 @@ class MotionDetectorControl extends IPSModule
         $this->SetTimerInterval('SwitchOffTimer', $seconds * 1000);
 
         // Restlaufzeit initialisieren und Countdown-Timer starten (jede Sekunde)
-        $this->SetValue('Restlaufzeit', $seconds);
+        $this->SetValue('Restlaufzeit', $value);
         $this->SetTimerInterval('CountdownTimer', 1000);
     }
 
@@ -127,6 +143,22 @@ class MotionDetectorControl extends IPSModule
             $this->SetTimerInterval('CountdownTimer', 0);
         } else {
             $this->SetValue('Restlaufzeit', $current - 1);
+        }
+    }
+
+    private function UpdateRestlaufzeitProfile(): void
+    {
+        $unit = $this->ReadPropertyInteger('DurationUnit');
+        switch ($unit) {
+            case 1:
+                IPS_SetVariableCustomProfile($this->GetIDForIdent('Restlaufzeit'), 'MDC.Minutes');
+                break;
+            case 2:
+                IPS_SetVariableCustomProfile($this->GetIDForIdent('Restlaufzeit'), 'MDC.Hours');
+                break;
+            default:
+                IPS_SetVariableCustomProfile($this->GetIDForIdent('Restlaufzeit'), 'MDC.Seconds');
+                break;
         }
     }
 
