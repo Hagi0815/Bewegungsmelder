@@ -27,6 +27,10 @@ class MotionDetectorControl extends IPSModule
 
         // Ausschalten-Variable
         $this->RegisterPropertyInteger('OffVariable', 0);
+
+        // Keine Bewegung Variable (optional, für Zeitplan-Wert bei keine Bewegung)
+        $this->RegisterPropertyInteger('NoMotionVariable', 0);
+        $this->RegisterPropertyInteger('NoMotionVariableType', 0);
         $this->RegisterPropertyInteger('OffVariableType', 0);
         $this->RegisterPropertyBoolean('OffValueBool', false);
         $this->RegisterPropertyFloat('OffValueFloat', 0.0);
@@ -130,23 +134,34 @@ class MotionDetectorControl extends IPSModule
         $this->SetTimerInterval('CountdownTimer', 0);
         $this->SetValue('Restlaufzeit', 0);
 
-        $targetID = $this->ReadPropertyInteger('OffVariable');
-        if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
-            return;
-        }
-
-        $type = $this->ReadPropertyInteger('OffVariableType');
-
         // Zeitplan-Wert für "keine Bewegung" prüfen
         $scheduleOffValue = $this->GetScheduleOffValue();
+
         if ($scheduleOffValue !== null) {
-            // Boolean-String konvertieren
+            // Eigene NoMotion-Variable verwenden falls konfiguriert, sonst OffVariable
+            $noMotionID = $this->ReadPropertyInteger('NoMotionVariable');
+            if ($noMotionID > 0 && IPS_VariableExists($noMotionID)) {
+                $type = $this->ReadPropertyInteger('NoMotionVariableType');
+                $targetID = $noMotionID;
+            } else {
+                $targetID = $this->ReadPropertyInteger('OffVariable');
+                if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+                    return;
+                }
+                $type = $this->ReadPropertyInteger('OffVariableType');
+            }
             if ($type === 0) {
                 $this->SendValue($targetID, ($scheduleOffValue === 'true' || $scheduleOffValue === '1'), $type);
             } else {
                 $this->SendValue($targetID, $scheduleOffValue, $type);
             }
         } else {
+            // Standard Ausschalten
+            $targetID = $this->ReadPropertyInteger('OffVariable');
+            if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+                return;
+            }
+            $type = $this->ReadPropertyInteger('OffVariableType');
             $this->SendOffValue($targetID, $type);
         }
     }
@@ -275,19 +290,23 @@ class MotionDetectorControl extends IPSModule
 
     public function GetConfigurationForm(): string
     {
-        $onVarID  = $this->ReadPropertyInteger('OnVariable');
-        $offVarID = $this->ReadPropertyInteger('OffVariable');
+        $onVarID       = $this->ReadPropertyInteger('OnVariable');
+        $offVarID      = $this->ReadPropertyInteger('OffVariable');
+        $noMotionVarID = $this->ReadPropertyInteger('NoMotionVariable');
 
-        $onOptions  = $this->GetProfileOptions($onVarID);
-        $offOptions = $this->GetProfileOptions($offVarID);
+        $onOptions       = $this->GetProfileOptions($onVarID);
+        $offOptions      = $this->GetProfileOptions($offVarID);
+        $noMotionOptions = $this->GetProfileOptions($noMotionVarID);
+
+        $noMotionType = $this->ReadPropertyInteger('NoMotionVariableType');
 
         $onType  = $this->ReadPropertyInteger('OnVariableType');
         $offType = $this->ReadPropertyInteger('OffVariableType');
 
         $scheduleValueColA    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
         $scheduleValueColB    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
-        $scheduleValueOffColA = $this->BuildValueColumn($offOptions, $offType, 'ValueOff', 'Wert bei keine Bewegung');
-        $scheduleValueOffColB = $this->BuildValueColumn($offOptions, $offType, 'ValueOff', 'Wert bei keine Bewegung');
+        $scheduleValueOffColA = $this->BuildValueColumn($noMotionOptions, $noMotionType, 'ValueOff', 'Wert bei keine Bewegung');
+        $scheduleValueOffColB = $this->BuildValueColumn($noMotionOptions, $noMotionType, 'ValueOff', 'Wert bei keine Bewegung');
 
         // Standard-Einschaltwert fuer String: Dropdown wenn Profil vorhanden
         $form = [
@@ -331,6 +350,15 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'CheckBox',      'name' => 'OffValueBool',  'caption' => 'Boolean AUS'],
                         ['type' => 'NumberSpinner', 'name' => 'OffValueFloat', 'caption' => 'Float AUS', 'digits' => 2],
                         ['type' => 'NumberSpinner', 'name' => 'OffValueInt',   'caption' => 'Integer AUS'],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => 'Variable bei keine Bewegung (Zeitplan)'],
+                        ['type' => 'SelectVariable', 'name' => 'NoMotionVariable', 'caption' => 'Variable (optional)'],
+                        ['type' => 'Select', 'name' => 'NoMotionVariableType', 'caption' => 'Variablentyp', 'options' => [
+                            ['caption' => 'Boolean', 'value' => 0],
+                            ['caption' => 'Float',   'value' => 1],
+                            ['caption' => 'Integer', 'value' => 2],
+                            ['caption' => 'String',  'value' => 3],
+                        ]],
                     ]],
                 ]],
 
