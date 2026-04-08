@@ -254,27 +254,17 @@ class MotionDetectorControl extends IPSModule
         // Standard-Einschaltwert fuer String: Dropdown wenn Profil vorhanden
         $form = [
             'elements' => [
-                ['type' => 'Label', 'caption' => 'Bewegungsmelder (bis zu 3)'],
-                ['type' => 'SelectVariable', 'name' => 'MotionSensor1', 'caption' => 'Bewegungsmelder 1', 'validVariableType' => [0, 1, 2]],
-                ['type' => 'SelectVariable', 'name' => 'MotionSensor2', 'caption' => 'Bewegungsmelder 2 (optional)', 'validVariableType' => [0, 1, 2]],
-                ['type' => 'SelectVariable', 'name' => 'MotionSensor3', 'caption' => 'Bewegungsmelder 3 (optional)', 'validVariableType' => [0, 1, 2]],
-                ['type' => 'Label', 'caption' => ' '],
 
-                ['type' => 'Label', 'caption' => 'Einschaltdauer'],
+                // ── Zeile 1: Bewegungsmelder + Einschalten + Ausschalten ─
                 ['type' => 'RowLayout', 'items' => [
-                    ['type' => 'NumberSpinner', 'name' => 'DurationValue', 'caption' => 'Dauer', 'minimum' => 1, 'maximum' => 9999],
-                    ['type' => 'Select', 'name' => 'DurationUnit', 'caption' => 'Einheit', 'options' => [
-                        ['caption' => 'Sekunden', 'value' => 0],
-                        ['caption' => 'Minuten',  'value' => 1],
-                        ['caption' => 'Stunden',  'value' => 2],
+
+                    ['type' => 'ExpansionPanel', 'caption' => 'Bewegungsmelder', 'expanded' => true, 'items' => [
+                        ['type' => 'SelectVariable', 'name' => 'MotionSensor1', 'caption' => 'Bewegungsmelder 1', 'validVariableType' => [0, 1, 2]],
+                        ['type' => 'SelectVariable', 'name' => 'MotionSensor2', 'caption' => 'Bewegungsmelder 2 (optional)', 'validVariableType' => [0, 1, 2]],
+                        ['type' => 'SelectVariable', 'name' => 'MotionSensor3', 'caption' => 'Bewegungsmelder 3 (optional)', 'validVariableType' => [0, 1, 2]],
                     ]],
-                ]],
-                ['type' => 'Label', 'caption' => ' '],
 
-                // Einschalten | Ausschalten nebeneinander
-                ['type' => 'RowLayout', 'items' => [
-                    ['type' => 'ColumnLayout', 'items' => [
-                        ['type' => 'Label', 'caption' => 'Einschalten'],
+                    ['type' => 'ExpansionPanel', 'caption' => 'Einschalten', 'expanded' => true, 'items' => [
                         ['type' => 'SelectVariable', 'name' => 'OnVariable', 'caption' => 'Variable zum Einschalten'],
                         ['type' => 'Select', 'name' => 'OnVariableType', 'caption' => 'Variablentyp', 'options' => [
                             ['caption' => 'Boolean', 'value' => 0],
@@ -287,8 +277,8 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'NumberSpinner', 'name' => 'OnValueFloat', 'caption' => 'Float EIN', 'digits' => 2],
                         ['type' => 'NumberSpinner', 'name' => 'OnValueInt',   'caption' => 'Integer EIN'],
                     ]],
-                    ['type' => 'ColumnLayout', 'items' => [
-                        ['type' => 'Label', 'caption' => 'Ausschalten'],
+
+                    ['type' => 'ExpansionPanel', 'caption' => 'Ausschalten', 'expanded' => true, 'items' => [
                         ['type' => 'SelectVariable', 'name' => 'OffVariable', 'caption' => 'Variable zum Ausschalten'],
                         ['type' => 'Select', 'name' => 'OffVariableType', 'caption' => 'Variablentyp', 'options' => [
                             ['caption' => 'Boolean', 'value' => 0],
@@ -303,9 +293,23 @@ class MotionDetectorControl extends IPSModule
                     ]],
                 ]],
 
-                                ['type' => 'Label', 'caption' => ' '],
+                ['type' => 'Label', 'caption' => ' '],
 
-                ['type' => 'Label', 'caption' => 'Zeitplan'],
+                // ── Einschaltdauer ───────────────────────────────────────
+                ['type' => 'Label', 'bold' => true, 'caption' => 'Einschaltdauer'],
+                ['type' => 'RowLayout', 'items' => [
+                    ['type' => 'NumberSpinner', 'name' => 'DurationValue', 'caption' => 'Dauer', 'minimum' => 1, 'maximum' => 9999],
+                    ['type' => 'Select', 'name' => 'DurationUnit', 'caption' => 'Einheit', 'options' => [
+                        ['caption' => 'Sekunden', 'value' => 0],
+                        ['caption' => 'Minuten',  'value' => 1],
+                        ['caption' => 'Stunden',  'value' => 2],
+                    ]],
+                ]],
+
+                ['type' => 'Label', 'caption' => ' '],
+
+                // ── Zeitplan ─────────────────────────────────────────────
+                ['type' => 'Label', 'bold' => true, 'caption' => 'Zeitplan'],
                 ['type' => 'SelectVariable', 'name' => 'TimeScheduleVariable', 'caption' => 'Zeitplan-Umschalter (Boolean, leer = Zeitplan A aktiv)', 'validVariableType' => [0]],
 
                 ['type' => 'Label', 'caption' => 'Zeitplan A (Boolean = false oder keine Variable gewählt)'],
@@ -316,6 +320,7 @@ class MotionDetectorControl extends IPSModule
                         $scheduleValueColA,
                     ],
                 ],
+
                 ['type' => 'Label', 'caption' => ' '],
 
                 ['type' => 'Label', 'caption' => 'Zeitplan B (Boolean = true)'],
@@ -327,7 +332,8 @@ class MotionDetectorControl extends IPSModule
                     ],
                 ],
             ],
-            'actions' => [
+
+                        'actions' => [
                 ['type' => 'Button', 'caption' => 'Einschalten (Test)', 'onClick' => 'MDC_SwitchOn($id);'],
                 ['type' => 'Button', 'caption' => 'Ausschalten (Test)', 'onClick' => 'MDC_SwitchOff($id);'],
             ],
