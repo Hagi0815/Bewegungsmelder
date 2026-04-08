@@ -199,12 +199,9 @@ class MotionDetectorControl extends IPSModule
         $scheduleValueColB = $this->BuildValueColumn($onOptions);
 
         // Standard-Einschaltwert fuer String: Dropdown wenn Profil vorhanden
-        $onStringEdit  = empty($onOptions)
-            ? ['type' => 'ValidationTextBox']
-            : ['type' => 'Select', 'options' => $onOptions];
-        $offStringEdit = empty($offOptions)
-            ? ['type' => 'ValidationTextBox']
-            : ['type' => 'Select', 'options' => $offOptions];
+        // Standard-Werte immer als freies Textfeld
+        $onStringEdit  = ['type' => 'ValidationTextBox'];
+        $offStringEdit = ['type' => 'ValidationTextBox'];
 
         $form = [
             'elements' => [
