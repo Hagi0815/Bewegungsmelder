@@ -58,16 +58,16 @@
         },
         {
             "type": "Label",
-            "caption": "Ziel-Variable"
+            "caption": "Einschalten"
         },
         {
             "type": "SelectVariable",
-            "name": "TargetVariable",
-            "caption": "Variable zum Schalten"
+            "name": "OnVariable",
+            "caption": "Variable zum Einschalten"
         },
         {
             "type": "Select",
-            "name": "TargetVariableType",
+            "name": "OnVariableType",
             "caption": "Variablentyp",
             "options": [
                 {"caption": "Boolean", "value": 0},
@@ -75,10 +75,6 @@
                 {"caption": "Integer", "value": 2},
                 {"caption": "String",  "value": 3}
             ]
-        },
-        {
-            "type": "Label",
-            "caption": " "
         },
         {
             "type": "Label",
@@ -112,7 +108,31 @@
         },
         {
             "type": "Label",
-            "caption": "Ausschaltwert (nach Ablauf der Zeit)"
+            "caption": " "
+        },
+        {
+            "type": "Label",
+            "caption": "Ausschalten"
+        },
+        {
+            "type": "SelectVariable",
+            "name": "OffVariable",
+            "caption": "Variable zum Ausschalten"
+        },
+        {
+            "type": "Select",
+            "name": "OffVariableType",
+            "caption": "Variablentyp",
+            "options": [
+                {"caption": "Boolean", "value": 0},
+                {"caption": "Float",   "value": 1},
+                {"caption": "Integer", "value": 2},
+                {"caption": "String",  "value": 3}
+            ]
+        },
+        {
+            "type": "Label",
+            "caption": "Ausschaltwert"
         },
         {
             "type": "RowLayout",
@@ -146,16 +166,12 @@
         },
         {
             "type": "Label",
-            "caption": " "
-        },
-        {
-            "type": "Label",
-            "caption": "Zeitplan (optionale Einschaltwerte nach Uhrzeit)"
+            "caption": "Zeitplan"
         },
         {
             "type": "SelectVariable",
             "name": "TimeScheduleVariable",
-            "caption": "Zeitplan aktiv (Boolean-Variable, leer = immer aktiv)",
+            "caption": "Zeitplan-Umschalter (Boolean, leer = Zeitplan A aktiv)",
             "validVariableType": [0]
         },
         {
@@ -175,27 +191,21 @@
                     "name": "From",
                     "width": "150px",
                     "add": "07:00",
-                    "edit": {
-                        "type": "ValidationTextBox"
-                    }
+                    "edit": {"type": "ValidationTextBox"}
                 },
                 {
                     "caption": "Bis",
                     "name": "To",
                     "width": "150px",
                     "add": "22:00",
-                    "edit": {
-                        "type": "ValidationTextBox"
-                    }
+                    "edit": {"type": "ValidationTextBox"}
                 },
                 {
                     "caption": "Einschaltwert",
                     "name": "Value",
                     "width": "auto",
                     "add": "",
-                    "edit": {
-                        "type": "ValidationTextBox"
-                    }
+                    "edit": {"type": "ValidationTextBox"}
                 }
             ]
         },
@@ -220,27 +230,21 @@
                     "name": "From",
                     "width": "150px",
                     "add": "07:00",
-                    "edit": {
-                        "type": "ValidationTextBox"
-                    }
+                    "edit": {"type": "ValidationTextBox"}
                 },
                 {
                     "caption": "Bis",
                     "name": "To",
                     "width": "150px",
                     "add": "22:00",
-                    "edit": {
-                        "type": "ValidationTextBox"
-                    }
+                    "edit": {"type": "ValidationTextBox"}
                 },
                 {
                     "caption": "Einschaltwert",
                     "name": "Value",
                     "width": "auto",
                     "add": "",
-                    "edit": {
-                        "type": "ValidationTextBox"
-                    }
+                    "edit": {"type": "ValidationTextBox"}
                 }
             ]
         }
@@ -259,7 +263,7 @@
     ],
     "status": [
         {"code": 102, "icon": "active", "caption": "Bereit"},
-        {"code": 200, "icon": "error",  "caption": "Fehler: Ziel-Variable nicht gesetzt"},
+        {"code": 200, "icon": "error",  "caption": "Fehler: Einschalten-Variable nicht gesetzt"},
         {"code": 201, "icon": "error",  "caption": "Fehler: Kein Bewegungsmelder konfiguriert"}
     ]
 }

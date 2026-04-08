@@ -8,25 +8,32 @@ class MotionDetectorControl extends IPSModule
     {
         parent::Create();
 
+        // Bewegungsmelder
         $this->RegisterPropertyInteger('MotionSensor1', 0);
         $this->RegisterPropertyInteger('MotionSensor2', 0);
         $this->RegisterPropertyInteger('MotionSensor3', 0);
+
+        // Einschaltdauer
         $this->RegisterPropertyInteger('DurationValue', 30);
         $this->RegisterPropertyInteger('DurationUnit', 0);
-        $this->RegisterPropertyInteger('TargetVariable', 0);
-        $this->RegisterPropertyInteger('TargetVariableType', 0);
 
-        // Standard Ein/Aus Werte
+        // Einschalten-Variable
+        $this->RegisterPropertyInteger('OnVariable', 0);
+        $this->RegisterPropertyInteger('OnVariableType', 0);
         $this->RegisterPropertyBoolean('OnValueBool', true);
-        $this->RegisterPropertyBoolean('OffValueBool', false);
         $this->RegisterPropertyFloat('OnValueFloat', 1.0);
-        $this->RegisterPropertyFloat('OffValueFloat', 0.0);
         $this->RegisterPropertyInteger('OnValueInt', 1);
-        $this->RegisterPropertyInteger('OffValueInt', 0);
         $this->RegisterPropertyString('OnValueString', 'EIN');
+
+        // Ausschalten-Variable
+        $this->RegisterPropertyInteger('OffVariable', 0);
+        $this->RegisterPropertyInteger('OffVariableType', 0);
+        $this->RegisterPropertyBoolean('OffValueBool', false);
+        $this->RegisterPropertyFloat('OffValueFloat', 0.0);
+        $this->RegisterPropertyInteger('OffValueInt', 0);
         $this->RegisterPropertyString('OffValueString', 'AUS');
 
-        // Zeitplan aktivieren/deaktivieren über externe Boolean-Variable
+        // Zeitplan-Variable (Boolean)
         $this->RegisterPropertyInteger('TimeScheduleVariable', 0);
 
         // Zeitplan A (Boolean = false oder keine Variable)
@@ -65,12 +72,20 @@ class MotionDetectorControl extends IPSModule
 
     public function SwitchOn(): void
     {
-        $targetID = $this->ReadPropertyInteger('TargetVariable');
+        $targetID = $this->ReadPropertyInteger('OnVariable');
         if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
             return;
         }
 
-        $this->WriteTargetValue(true);
+        // Zeitplan-Wert oder Standard-Wert ermitteln
+        $scheduleValue = $this->GetScheduleValue();
+        $type = $this->ReadPropertyInteger('OnVariableType');
+
+        if ($scheduleValue !== null) {
+            $this->SendValue($targetID, $scheduleValue, $type);
+        } else {
+            $this->SendOnValue($targetID, $type);
+        }
 
         $value = $this->ReadPropertyInteger('DurationValue');
         $unit  = $this->ReadPropertyInteger('DurationUnit');
@@ -85,62 +100,64 @@ class MotionDetectorControl extends IPSModule
     public function SwitchOff(): void
     {
         $this->SetTimerInterval('SwitchOffTimer', 0);
-        $this->WriteTargetValue(false);
-    }
 
-    private function WriteTargetValue($on): void
-    {
-        $targetID = $this->ReadPropertyInteger('TargetVariable');
+        $targetID = $this->ReadPropertyInteger('OffVariable');
         if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
             return;
         }
 
-        $type = $this->ReadPropertyInteger('TargetVariableType');
+        $type = $this->ReadPropertyInteger('OffVariableType');
+        $this->SendOffValue($targetID, $type);
+    }
 
-        if ($on) {
-            // Zeitplan prüfen
-            $scheduleValue = $this->GetScheduleValue();
-            if ($scheduleValue !== null) {
-                // Zeitplan-Wert verwenden
-                switch ($type) {
-                    case 0:
-                        RequestAction($targetID, (bool) $scheduleValue);
-                        break;
-                    case 1:
-                        RequestAction($targetID, (float) $scheduleValue);
-                        break;
-                    case 2:
-                        RequestAction($targetID, (int) $scheduleValue);
-                        break;
-                    case 3:
-                        RequestAction($targetID, (string) $scheduleValue);
-                        break;
-                }
-                return;
-            }
+    private function SendValue($targetID, $value, $type): void
+    {
+        switch ($type) {
+            case 0: RequestAction($targetID, (bool) $value); break;
+            case 1: RequestAction($targetID, (float) $value); break;
+            case 2: RequestAction($targetID, (int) $value); break;
+            case 3: RequestAction($targetID, (string) $value); break;
         }
+    }
 
-        // Standard-Wert verwenden
+    private function SendOnValue($targetID, $type): void
+    {
         switch ($type) {
             case 0:
-                $boolVal = $on ? $this->ReadPropertyBoolean('OnValueBool') : $this->ReadPropertyBoolean('OffValueBool');
-                RequestAction($targetID, (bool) $boolVal);
+                RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OnValueBool'));
                 break;
             case 1:
-                RequestAction($targetID, $on ? $this->ReadPropertyFloat('OnValueFloat') : $this->ReadPropertyFloat('OffValueFloat'));
+                RequestAction($targetID, $this->ReadPropertyFloat('OnValueFloat'));
                 break;
             case 2:
-                RequestAction($targetID, $on ? $this->ReadPropertyInteger('OnValueInt') : $this->ReadPropertyInteger('OffValueInt'));
+                RequestAction($targetID, $this->ReadPropertyInteger('OnValueInt'));
                 break;
             case 3:
-                RequestAction($targetID, $on ? $this->ReadPropertyString('OnValueString') : $this->ReadPropertyString('OffValueString'));
+                RequestAction($targetID, $this->ReadPropertyString('OnValueString'));
+                break;
+        }
+    }
+
+    private function SendOffValue($targetID, $type): void
+    {
+        switch ($type) {
+            case 0:
+                RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OffValueBool'));
+                break;
+            case 1:
+                RequestAction($targetID, $this->ReadPropertyFloat('OffValueFloat'));
+                break;
+            case 2:
+                RequestAction($targetID, $this->ReadPropertyInteger('OffValueInt'));
+                break;
+            case 3:
+                RequestAction($targetID, $this->ReadPropertyString('OffValueString'));
                 break;
         }
     }
 
     private function GetScheduleValue()
     {
-        // Boolean-Variable bestimmt welcher Zeitplan aktiv ist
         $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
         $useScheduleB = false;
         if ($scheduleVarID > 0 && IPS_VariableExists($scheduleVarID)) {
@@ -171,7 +188,6 @@ class MotionDetectorControl extends IPSModule
             $from = (int) $fromParts[0] * 60 + (int) $fromParts[1];
             $to   = (int) $toParts[0] * 60 + (int) $toParts[1];
 
-            // Mitternacht-Überlauf: z.B. 22:00 - 02:00
             if ($from <= $to) {
                 if ($now >= $from && $now < $to) {
                     return $entry['Value'];
