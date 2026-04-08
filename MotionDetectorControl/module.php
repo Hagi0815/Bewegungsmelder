@@ -132,7 +132,14 @@ class MotionDetectorControl extends IPSModule
         }
 
         $type = $this->ReadPropertyInteger('OffVariableType');
-        $this->SendOffValue($targetID, $type);
+
+        // Zeitplan-Wert für "keine Bewegung" prüfen
+        $scheduleOffValue = $this->GetScheduleOffValue();
+        if ($scheduleOffValue !== null) {
+            $this->SendValue($targetID, $scheduleOffValue, $type);
+        } else {
+            $this->SendOffValue($targetID, $type);
+        }
     }
 
     public function UpdateCountdown(): void
@@ -194,7 +201,8 @@ class MotionDetectorControl extends IPSModule
         }
     }
 
-    private function GetScheduleValue()
+    // Returns array ['on' => value, 'off' => value] or null if no match
+    private function GetScheduleEntry()
     {
         $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
         $useScheduleB = false;
@@ -212,7 +220,7 @@ class MotionDetectorControl extends IPSModule
         $now = (int) date('H') * 60 + (int) date('i');
 
         foreach ($schedule as $entry) {
-            if (empty($entry['From']) || empty($entry['To']) || !isset($entry['Value'])) {
+            if (empty($entry['From']) || empty($entry['To'])) {
                 continue;
             }
 
@@ -226,18 +234,34 @@ class MotionDetectorControl extends IPSModule
             $from = (int) $fromParts[0] * 60 + (int) $fromParts[1];
             $to   = (int) $toParts[0] * 60 + (int) $toParts[1];
 
+            $inRange = false;
             if ($from <= $to) {
-                if ($now >= $from && $now < $to) {
-                    return $entry['Value'];
-                }
+                $inRange = ($now >= $from && $now < $to);
             } else {
-                if ($now >= $from || $now < $to) {
-                    return $entry['Value'];
-                }
+                $inRange = ($now >= $from || $now < $to);
+            }
+
+            if ($inRange) {
+                return [
+                    'on'  => isset($entry['Value'])    && $entry['Value']    !== '' ? $entry['Value']    : null,
+                    'off' => isset($entry['ValueOff']) && $entry['ValueOff'] !== '' ? $entry['ValueOff'] : null,
+                ];
             }
         }
 
         return null;
+    }
+
+    private function GetScheduleValue()
+    {
+        $entry = $this->GetScheduleEntry();
+        return $entry !== null ? $entry['on'] : null;
+    }
+
+    private function GetScheduleOffValue()
+    {
+        $entry = $this->GetScheduleEntry();
+        return ($entry !== null && $entry['off'] !== null) ? $entry['off'] : null;
     }
 
     public function GetConfigurationForm(): string
@@ -248,8 +272,10 @@ class MotionDetectorControl extends IPSModule
         $onOptions  = $this->GetProfileOptions($onVarID);
         $offOptions = $this->GetProfileOptions($offVarID);
 
-        $scheduleValueColA = $this->BuildValueColumn($onOptions);
-        $scheduleValueColB = $this->BuildValueColumn($onOptions);
+        $scheduleValueColA    = $this->BuildValueColumn($onOptions, 'Value',    'Wert bei Bewegung');
+        $scheduleValueColB    = $this->BuildValueColumn($onOptions, 'Value',    'Wert bei Bewegung');
+        $scheduleValueOffColA = $this->BuildValueColumn($offOptions, 'ValueOff', 'Wert bei keine Bewegung');
+        $scheduleValueOffColB = $this->BuildValueColumn($offOptions, 'ValueOff', 'Wert bei keine Bewegung');
 
         // Standard-Einschaltwert fuer String: Dropdown wenn Profil vorhanden
         $form = [
@@ -318,9 +344,10 @@ class MotionDetectorControl extends IPSModule
                 ['type' => 'Label', 'caption' => 'Zeitplan A (Boolean = false oder keine Variable gewählt)'],
                 ['type' => 'List', 'name' => 'TimeScheduleA', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => [
-                        ['caption' => 'Von', 'name' => 'From', 'width' => '150px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        ['caption' => 'Bis', 'name' => 'To',   'width' => '150px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ['caption' => 'Von', 'name' => 'From', 'width' => '120px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ['caption' => 'Bis', 'name' => 'To',   'width' => '120px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
                         $scheduleValueColA,
+                        $scheduleValueOffColA,
                     ],
                 ],
 
@@ -329,9 +356,10 @@ class MotionDetectorControl extends IPSModule
                 ['type' => 'Label', 'caption' => 'Zeitplan B (Boolean = true)'],
                 ['type' => 'List', 'name' => 'TimeScheduleB', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => [
-                        ['caption' => 'Von', 'name' => 'From', 'width' => '150px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        ['caption' => 'Bis', 'name' => 'To',   'width' => '150px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ['caption' => 'Von', 'name' => 'From', 'width' => '120px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ['caption' => 'Bis', 'name' => 'To',   'width' => '120px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
                         $scheduleValueColB,
+                        $scheduleValueOffColB,
                     ],
                 ],
             ],
@@ -370,20 +398,20 @@ class MotionDetectorControl extends IPSModule
         return $options;
     }
 
-    private function BuildValueColumn(array $profileOptions): array
+    private function BuildValueColumn(array $profileOptions, string $name = 'Value', string $caption = 'Einschaltwert'): array
     {
         if (!empty($profileOptions)) {
             return [
-                'caption' => 'Einschaltwert',
-                'name'    => 'Value',
+                'caption' => $caption,
+                'name'    => $name,
                 'width'   => 'auto',
                 'add'     => $profileOptions[0]['value'] ?? '',
                 'edit'    => ['type' => 'Select', 'options' => $profileOptions],
             ];
         }
         return [
-            'caption' => 'Einschaltwert',
-            'name'    => 'Value',
+            'caption' => $caption,
+            'name'    => $name,
             'width'   => 'auto',
             'add'     => '',
             'edit'    => ['type' => 'ValidationTextBox'],
