@@ -265,9 +265,6 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'Label', 'caption' => ' '],
                     ]],
 
                     ['type' => 'ExpansionPanel', 'caption' => 'Einschalten', 'expanded' => true, 'items' => [
