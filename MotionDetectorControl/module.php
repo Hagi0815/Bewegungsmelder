@@ -262,6 +262,12 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'SelectVariable', 'name' => 'MotionSensor1', 'caption' => 'Bewegungsmelder 1', 'validVariableType' => [0, 1, 2]],
                         ['type' => 'SelectVariable', 'name' => 'MotionSensor2', 'caption' => 'Bewegungsmelder 2 (optional)', 'validVariableType' => [0, 1, 2]],
                         ['type' => 'SelectVariable', 'name' => 'MotionSensor3', 'caption' => 'Bewegungsmelder 3 (optional)', 'validVariableType' => [0, 1, 2]],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
                     ]],
 
                     ['type' => 'ExpansionPanel', 'caption' => 'Einschalten', 'expanded' => true, 'items' => [
