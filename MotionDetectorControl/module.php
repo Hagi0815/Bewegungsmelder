@@ -77,7 +77,6 @@ class MotionDetectorControl extends IPSModule
             return;
         }
 
-        // Zeitplan-Wert oder Standard-Wert ermitteln
         $scheduleValue = $this->GetScheduleValue();
         $type = $this->ReadPropertyInteger('OnVariableType');
 
@@ -110,6 +109,8 @@ class MotionDetectorControl extends IPSModule
         $this->SendOffValue($targetID, $type);
     }
 
+    // ── Hilfsmethoden ────────────────────────────────────────────────────
+
     private function SendValue($targetID, $value, $type): void
     {
         switch ($type) {
@@ -123,36 +124,20 @@ class MotionDetectorControl extends IPSModule
     private function SendOnValue($targetID, $type): void
     {
         switch ($type) {
-            case 0:
-                RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OnValueBool'));
-                break;
-            case 1:
-                RequestAction($targetID, $this->ReadPropertyFloat('OnValueFloat'));
-                break;
-            case 2:
-                RequestAction($targetID, $this->ReadPropertyInteger('OnValueInt'));
-                break;
-            case 3:
-                RequestAction($targetID, $this->ReadPropertyString('OnValueString'));
-                break;
+            case 0: RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OnValueBool')); break;
+            case 1: RequestAction($targetID, $this->ReadPropertyFloat('OnValueFloat')); break;
+            case 2: RequestAction($targetID, $this->ReadPropertyInteger('OnValueInt')); break;
+            case 3: RequestAction($targetID, $this->ReadPropertyString('OnValueString')); break;
         }
     }
 
     private function SendOffValue($targetID, $type): void
     {
         switch ($type) {
-            case 0:
-                RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OffValueBool'));
-                break;
-            case 1:
-                RequestAction($targetID, $this->ReadPropertyFloat('OffValueFloat'));
-                break;
-            case 2:
-                RequestAction($targetID, $this->ReadPropertyInteger('OffValueInt'));
-                break;
-            case 3:
-                RequestAction($targetID, $this->ReadPropertyString('OffValueString'));
-                break;
+            case 0: RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OffValueBool')); break;
+            case 1: RequestAction($targetID, $this->ReadPropertyFloat('OffValueFloat')); break;
+            case 2: RequestAction($targetID, $this->ReadPropertyInteger('OffValueInt')); break;
+            case 3: RequestAction($targetID, $this->ReadPropertyString('OffValueString')); break;
         }
     }
 
