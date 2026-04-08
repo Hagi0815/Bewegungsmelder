@@ -159,9 +159,58 @@
             "validVariableType": [0]
         },
         {
+            "type": "Label",
+            "caption": "Zeitplan A (Boolean = false oder keine Variable gewählt)"
+        },
+        {
             "type": "List",
-            "name": "TimeSchedule",
-            "caption": "Zeitplan",
+            "name": "TimeScheduleA",
+            "caption": "Zeitplan A",
+            "rowCount": 5,
+            "add": true,
+            "delete": true,
+            "columns": [
+                {
+                    "caption": "Von",
+                    "name": "From",
+                    "width": "150px",
+                    "add": "07:00",
+                    "edit": {
+                        "type": "ValidationTextBox"
+                    }
+                },
+                {
+                    "caption": "Bis",
+                    "name": "To",
+                    "width": "150px",
+                    "add": "22:00",
+                    "edit": {
+                        "type": "ValidationTextBox"
+                    }
+                },
+                {
+                    "caption": "Einschaltwert",
+                    "name": "Value",
+                    "width": "auto",
+                    "add": "",
+                    "edit": {
+                        "type": "ValidationTextBox"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Label",
+            "caption": " "
+        },
+        {
+            "type": "Label",
+            "caption": "Zeitplan B (Boolean = true)"
+        },
+        {
+            "type": "List",
+            "name": "TimeScheduleB",
+            "caption": "Zeitplan B",
             "rowCount": 5,
             "add": true,
             "delete": true,

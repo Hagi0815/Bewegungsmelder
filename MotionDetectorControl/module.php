@@ -29,9 +29,10 @@ class MotionDetectorControl extends IPSModule
         // Zeitplan aktivieren/deaktivieren über externe Boolean-Variable
         $this->RegisterPropertyInteger('TimeScheduleVariable', 0);
 
-        // Zeitplan-Einträge als JSON-Array
-        // Jeder Eintrag: {"From":"07:00","To":"10:00","Value":"0.5"}
-        $this->RegisterPropertyString('TimeSchedule', '[]');
+        // Zeitplan A (Boolean = false oder keine Variable)
+        $this->RegisterPropertyString('TimeScheduleA', '[]');
+        // Zeitplan B (Boolean = true)
+        $this->RegisterPropertyString('TimeScheduleB', '[]');
 
         $this->RegisterTimer('SwitchOffTimer', 0, 'MDC_SwitchOff(' . $this->InstanceID . ');');
     }
@@ -139,15 +140,14 @@ class MotionDetectorControl extends IPSModule
 
     private function GetScheduleValue()
     {
-        // Zeitplan-Variable prüfen: nicht gesetzt = immer aktiv
+        // Boolean-Variable bestimmt welcher Zeitplan aktiv ist
         $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+        $useScheduleB = false;
         if ($scheduleVarID > 0 && IPS_VariableExists($scheduleVarID)) {
-            if (!GetValueBoolean($scheduleVarID)) {
-                return null;
-            }
+            $useScheduleB = GetValueBoolean($scheduleVarID);
         }
 
-        $scheduleJson = $this->ReadPropertyString('TimeSchedule');
+        $scheduleJson = $this->ReadPropertyString($useScheduleB ? 'TimeScheduleB' : 'TimeScheduleA');
         $schedule = json_decode($scheduleJson, true);
 
         if (empty($schedule)) {
