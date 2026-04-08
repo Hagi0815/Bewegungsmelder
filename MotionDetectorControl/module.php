@@ -101,7 +101,11 @@ class MotionDetectorControl extends IPSModule
         $type = $this->ReadPropertyInteger('OnVariableType');
 
         if ($scheduleValue !== null) {
-            $this->SendValue($targetID, $scheduleValue, $type);
+            if ($type === 0) {
+                $this->SendValue($targetID, ($scheduleValue === 'true' || $scheduleValue === '1'), $type);
+            } else {
+                $this->SendValue($targetID, $scheduleValue, $type);
+            }
         } else {
             $this->SendOnValue($targetID, $type);
         }
@@ -136,7 +140,12 @@ class MotionDetectorControl extends IPSModule
         // Zeitplan-Wert für "keine Bewegung" prüfen
         $scheduleOffValue = $this->GetScheduleOffValue();
         if ($scheduleOffValue !== null) {
-            $this->SendValue($targetID, $scheduleOffValue, $type);
+            // Boolean-String konvertieren
+            if ($type === 0) {
+                $this->SendValue($targetID, ($scheduleOffValue === 'true' || $scheduleOffValue === '1'), $type);
+            } else {
+                $this->SendValue($targetID, $scheduleOffValue, $type);
+            }
         } else {
             $this->SendOffValue($targetID, $type);
         }
@@ -272,10 +281,13 @@ class MotionDetectorControl extends IPSModule
         $onOptions  = $this->GetProfileOptions($onVarID);
         $offOptions = $this->GetProfileOptions($offVarID);
 
-        $scheduleValueColA    = $this->BuildValueColumn($onOptions, 'Value',    'Wert bei Bewegung');
-        $scheduleValueColB    = $this->BuildValueColumn($onOptions, 'Value',    'Wert bei Bewegung');
-        $scheduleValueOffColA = $this->BuildValueColumn($offOptions, 'ValueOff', 'Wert bei keine Bewegung');
-        $scheduleValueOffColB = $this->BuildValueColumn($offOptions, 'ValueOff', 'Wert bei keine Bewegung');
+        $onType  = $this->ReadPropertyInteger('OnVariableType');
+        $offType = $this->ReadPropertyInteger('OffVariableType');
+
+        $scheduleValueColA    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
+        $scheduleValueColB    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
+        $scheduleValueOffColA = $this->BuildValueColumn($offOptions, $offType, 'ValueOff', 'Wert bei keine Bewegung');
+        $scheduleValueOffColB = $this->BuildValueColumn($offOptions, $offType, 'ValueOff', 'Wert bei keine Bewegung');
 
         // Standard-Einschaltwert fuer String: Dropdown wenn Profil vorhanden
         $form = [
@@ -344,10 +356,10 @@ class MotionDetectorControl extends IPSModule
                 ['type' => 'Label', 'caption' => 'Zeitplan A (Boolean = false oder keine Variable gewählt)'],
                 ['type' => 'List', 'name' => 'TimeScheduleA', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => [
-                        ['caption' => 'Von', 'name' => 'From', 'width' => '120px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        ['caption' => 'Bis', 'name' => 'To',   'width' => '120px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        $scheduleValueColA,
-                        $scheduleValueOffColA,
+                        ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        array_merge($scheduleValueColA,    ['width' => '200px']),
+                        array_merge($scheduleValueOffColA, ['width' => '200px']),
                     ],
                 ],
 
@@ -356,10 +368,10 @@ class MotionDetectorControl extends IPSModule
                 ['type' => 'Label', 'caption' => 'Zeitplan B (Boolean = true)'],
                 ['type' => 'List', 'name' => 'TimeScheduleB', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => [
-                        ['caption' => 'Von', 'name' => 'From', 'width' => '120px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        ['caption' => 'Bis', 'name' => 'To',   'width' => '120px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        $scheduleValueColB,
-                        $scheduleValueOffColB,
+                        ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        array_merge($scheduleValueColB,    ['width' => '200px']),
+                        array_merge($scheduleValueOffColB, ['width' => '200px']),
                     ],
                 ],
             ],
@@ -398,9 +410,10 @@ class MotionDetectorControl extends IPSModule
         return $options;
     }
 
-    private function BuildValueColumn(array $profileOptions, string $name = 'Value', string $caption = 'Einschaltwert'): array
+    private function BuildValueColumn(array $profileOptions, int $varType = 3, string $name = 'Value', string $caption = 'Einschaltwert'): array
     {
-        if (!empty($profileOptions)) {
+        // String mit Profil -> Dropdown
+        if ($varType === 3 && !empty($profileOptions)) {
             return [
                 'caption' => $caption,
                 'name'    => $name,
@@ -409,6 +422,20 @@ class MotionDetectorControl extends IPSModule
                 'edit'    => ['type' => 'Select', 'options' => $profileOptions],
             ];
         }
+        // Boolean -> CheckBox
+        if ($varType === 0) {
+            return [
+                'caption' => $caption,
+                'name'    => $name,
+                'width'   => 'auto',
+                'add'     => 'false',
+                'edit'    => ['type' => 'Select', 'options' => [
+                    ['caption' => 'true',  'value' => 'true'],
+                    ['caption' => 'false', 'value' => 'false'],
+                ]],
+            ];
+        }
+        // Float, Integer, String ohne Profil -> freies Textfeld
         return [
             'caption' => $caption,
             'name'    => $name,
