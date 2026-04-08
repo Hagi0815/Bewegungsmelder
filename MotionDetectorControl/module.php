@@ -199,10 +199,6 @@ class MotionDetectorControl extends IPSModule
         $scheduleValueColB = $this->BuildValueColumn($onOptions);
 
         // Standard-Einschaltwert fuer String: Dropdown wenn Profil vorhanden
-        // Standard-Werte immer als freies Textfeld
-        $onStringEdit  = ['type' => 'ValidationTextBox'];
-        $offStringEdit = ['type' => 'ValidationTextBox'];
-
         $form = [
             'elements' => [
                 ['type' => 'Label', 'caption' => 'Bewegungsmelder (bis zu 3)'],
@@ -235,7 +231,7 @@ class MotionDetectorControl extends IPSModule
                     ['type' => 'CheckBox',         'name' => 'OnValueBool',   'caption' => 'Boolean EIN'],
                     ['type' => 'NumberSpinner',     'name' => 'OnValueFloat',  'caption' => 'Float EIN', 'digits' => 2],
                     ['type' => 'NumberSpinner',     'name' => 'OnValueInt',    'caption' => 'Integer EIN'],
-                    array_merge(['name' => 'OnValueString', 'caption' => 'String EIN'], $onStringEdit),
+
                 ]],
                 ['type' => 'Label', 'caption' => ' '],
 
@@ -252,7 +248,7 @@ class MotionDetectorControl extends IPSModule
                     ['type' => 'CheckBox',         'name' => 'OffValueBool',   'caption' => 'Boolean AUS'],
                     ['type' => 'NumberSpinner',     'name' => 'OffValueFloat',  'caption' => 'Float AUS', 'digits' => 2],
                     ['type' => 'NumberSpinner',     'name' => 'OffValueInt',    'caption' => 'Integer AUS'],
-                    array_merge(['name' => 'OffValueString', 'caption' => 'String AUS'], $offStringEdit),
+
                 ]],
                 ['type' => 'Label', 'caption' => ' '],
 
