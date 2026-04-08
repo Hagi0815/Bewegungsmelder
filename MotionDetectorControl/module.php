@@ -42,6 +42,10 @@ class MotionDetectorControl extends IPSModule
         $this->RegisterPropertyString('TimeScheduleB', '[]');
 
         $this->RegisterTimer('SwitchOffTimer', 0, 'MDC_SwitchOff(' . $this->InstanceID . ');');
+        $this->RegisterTimer('CountdownTimer', 0, 'MDC_UpdateCountdown(' . $this->InstanceID . ');');
+
+        // Statusvariable Restlaufzeit
+        $this->RegisterVariableInteger('Restlaufzeit', 'Restlaufzeit (Sek.)', '', 0);
     }
 
     public function ApplyChanges(): void
@@ -94,11 +98,17 @@ class MotionDetectorControl extends IPSModule
             default: $seconds = $value; break;
         }
         $this->SetTimerInterval('SwitchOffTimer', $seconds * 1000);
+
+        // Restlaufzeit initialisieren und Countdown-Timer starten (jede Sekunde)
+        $this->SetValue('Restlaufzeit', $seconds);
+        $this->SetTimerInterval('CountdownTimer', 1000);
     }
 
     public function SwitchOff(): void
     {
         $this->SetTimerInterval('SwitchOffTimer', 0);
+        $this->SetTimerInterval('CountdownTimer', 0);
+        $this->SetValue('Restlaufzeit', 0);
 
         $targetID = $this->ReadPropertyInteger('OffVariable');
         if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
@@ -107,6 +117,17 @@ class MotionDetectorControl extends IPSModule
 
         $type = $this->ReadPropertyInteger('OffVariableType');
         $this->SendOffValue($targetID, $type);
+    }
+
+    public function UpdateCountdown(): void
+    {
+        $current = $this->GetValue('Restlaufzeit');
+        if ($current <= 1) {
+            $this->SetValue('Restlaufzeit', 0);
+            $this->SetTimerInterval('CountdownTimer', 0);
+        } else {
+            $this->SetValue('Restlaufzeit', $current - 1);
+        }
     }
 
     // ── Hilfsmethoden ────────────────────────────────────────────────────
