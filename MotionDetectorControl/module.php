@@ -271,39 +271,39 @@ class MotionDetectorControl extends IPSModule
                 ]],
                 ['type' => 'Label', 'caption' => ' '],
 
-                ['type' => 'Label', 'caption' => 'Einschalten'],
-                ['type' => 'SelectVariable', 'name' => 'OnVariable', 'caption' => 'Variable zum Einschalten'],
-                ['type' => 'Select', 'name' => 'OnVariableType', 'caption' => 'Variablentyp', 'options' => [
-                    ['caption' => 'Boolean', 'value' => 0],
-                    ['caption' => 'Float',   'value' => 1],
-                    ['caption' => 'Integer', 'value' => 2],
-                    ['caption' => 'String',  'value' => 3],
-                ]],
-                ['type' => 'Label', 'caption' => 'Standard Einschaltwert (wenn kein Zeitplan greift)'],
+                // Einschalten | Ausschalten nebeneinander
                 ['type' => 'RowLayout', 'items' => [
-                    ['type' => 'CheckBox',         'name' => 'OnValueBool',   'caption' => 'Boolean EIN'],
-                    ['type' => 'NumberSpinner',     'name' => 'OnValueFloat',  'caption' => 'Float EIN', 'digits' => 2],
-                    ['type' => 'NumberSpinner',     'name' => 'OnValueInt',    'caption' => 'Integer EIN'],
-
+                    ['type' => 'ColumnLayout', 'items' => [
+                        ['type' => 'Label', 'caption' => 'Einschalten'],
+                        ['type' => 'SelectVariable', 'name' => 'OnVariable', 'caption' => 'Variable zum Einschalten'],
+                        ['type' => 'Select', 'name' => 'OnVariableType', 'caption' => 'Variablentyp', 'options' => [
+                            ['caption' => 'Boolean', 'value' => 0],
+                            ['caption' => 'Float',   'value' => 1],
+                            ['caption' => 'Integer', 'value' => 2],
+                            ['caption' => 'String',  'value' => 3],
+                        ]],
+                        ['type' => 'Label', 'caption' => 'Standard Einschaltwert (wenn kein Zeitplan greift)'],
+                        ['type' => 'CheckBox',      'name' => 'OnValueBool',  'caption' => 'Boolean EIN'],
+                        ['type' => 'NumberSpinner', 'name' => 'OnValueFloat', 'caption' => 'Float EIN', 'digits' => 2],
+                        ['type' => 'NumberSpinner', 'name' => 'OnValueInt',   'caption' => 'Integer EIN'],
+                    ]],
+                    ['type' => 'ColumnLayout', 'items' => [
+                        ['type' => 'Label', 'caption' => 'Ausschalten'],
+                        ['type' => 'SelectVariable', 'name' => 'OffVariable', 'caption' => 'Variable zum Ausschalten'],
+                        ['type' => 'Select', 'name' => 'OffVariableType', 'caption' => 'Variablentyp', 'options' => [
+                            ['caption' => 'Boolean', 'value' => 0],
+                            ['caption' => 'Float',   'value' => 1],
+                            ['caption' => 'Integer', 'value' => 2],
+                            ['caption' => 'String',  'value' => 3],
+                        ]],
+                        ['type' => 'Label', 'caption' => 'Ausschaltwert'],
+                        ['type' => 'CheckBox',      'name' => 'OffValueBool',  'caption' => 'Boolean AUS'],
+                        ['type' => 'NumberSpinner', 'name' => 'OffValueFloat', 'caption' => 'Float AUS', 'digits' => 2],
+                        ['type' => 'NumberSpinner', 'name' => 'OffValueInt',   'caption' => 'Integer AUS'],
+                    ]],
                 ]],
-                ['type' => 'Label', 'caption' => ' '],
 
-                ['type' => 'Label', 'caption' => 'Ausschalten'],
-                ['type' => 'SelectVariable', 'name' => 'OffVariable', 'caption' => 'Variable zum Ausschalten'],
-                ['type' => 'Select', 'name' => 'OffVariableType', 'caption' => 'Variablentyp', 'options' => [
-                    ['caption' => 'Boolean', 'value' => 0],
-                    ['caption' => 'Float',   'value' => 1],
-                    ['caption' => 'Integer', 'value' => 2],
-                    ['caption' => 'String',  'value' => 3],
-                ]],
-                ['type' => 'Label', 'caption' => 'Ausschaltwert'],
-                ['type' => 'RowLayout', 'items' => [
-                    ['type' => 'CheckBox',         'name' => 'OffValueBool',   'caption' => 'Boolean AUS'],
-                    ['type' => 'NumberSpinner',     'name' => 'OffValueFloat',  'caption' => 'Float AUS', 'digits' => 2],
-                    ['type' => 'NumberSpinner',     'name' => 'OffValueInt',    'caption' => 'Integer AUS'],
-
-                ]],
-                ['type' => 'Label', 'caption' => ' '],
+                                ['type' => 'Label', 'caption' => ' '],
 
                 ['type' => 'Label', 'caption' => 'Zeitplan'],
                 ['type' => 'SelectVariable', 'name' => 'TimeScheduleVariable', 'caption' => 'Zeitplan-Umschalter (Boolean, leer = Zeitplan A aktiv)', 'validVariableType' => [0]],
