@@ -107,10 +107,15 @@ class MotionDetectorControl extends IPSModule
 
         if (in_array($SenderID, $sensorIDs, true)) {
             $value = GetValue($SenderID);
+            $this->SendDebug('MessageSink', 'Bewegungsmelder ID ' . $SenderID . ' → Wert: ' . var_export($value, true), 0);
             if (is_bool($value) && $value === true) {
+                $this->SendDebug('MessageSink', 'Bewegung erkannt → SwitchOn', 0);
                 $this->SwitchOn();
             } elseif ((is_int($value) || is_float($value)) && $value > 0) {
+                $this->SendDebug('MessageSink', 'Bewegung erkannt (Wert > 0) → SwitchOn', 0);
                 $this->SwitchOn();
+            } else {
+                $this->SendDebug('MessageSink', 'Keine Bewegung (Wert inaktiv)', 0);
             }
             return;
         }
@@ -315,10 +320,11 @@ class MotionDetectorControl extends IPSModule
             if (!isset($entry['Value'])) {
                 continue;
             }
-            return [
-                'on'  => isset($entry['Value'])    && $entry['Value']    !== '' ? $entry['Value']    : null,
-                'off' => isset($entry['ValueOff']) && $entry['ValueOff'] !== '' ? $entry['ValueOff'] : null,
-            ];
+            $onVal  = isset($entry['Value'])    && $entry['Value']    !== '' ? $entry['Value']    : null;
+            $offVal = isset($entry['ValueOff']) && $entry['ValueOff'] !== '' ? $entry['ValueOff'] : null;
+            $switchLabel = $useScheduleB ? 'B (true)' : 'A (false)';
+            $this->SendDebug('GetDayNightEntry', 'Plan ' . $switchLabel . ' aktiv | EIN: ' . ($onVal ?? 'Standard') . ' | AUS: ' . ($offVal ?? 'Standard'), 0);
+            return ['on' => $onVal, 'off' => $offVal];
         }
 
         return null;
@@ -373,10 +379,10 @@ class MotionDetectorControl extends IPSModule
             }
 
             if ($inRange) {
-                return [
-                    'on'  => isset($entry['Value'])    && $entry['Value']    !== '' ? $entry['Value']    : null,
-                    'off' => isset($entry['ValueOff']) && $entry['ValueOff'] !== '' ? $entry['ValueOff'] : null,
-                ];
+                $onVal  = isset($entry['Value'])    && $entry['Value']    !== '' ? $entry['Value']    : null;
+                $offVal = isset($entry['ValueOff']) && $entry['ValueOff'] !== '' ? $entry['ValueOff'] : null;
+                $this->SendDebug('GetScheduleEntry', 'Zeitfenster ' . $entry['From'] . '-' . $entry['To'] . ' aktiv | EIN: ' . ($onVal ?? 'Standard') . ' | AUS: ' . ($offVal ?? 'Standard'), 0);
+                return ['on' => $onVal, 'off' => $offVal];
             }
         }
 
