@@ -451,7 +451,7 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'NumberSpinner', 'name' => 'OnValueInt',   'caption' => 'Integer EIN'],
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'SelectVariable', 'name' => 'TimeScheduleVariable', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Select', 'name' => 'OffVariableType', 'caption' => ' ', 'visible' => false, 'options' => [['caption' => ' ', 'value' => 0]]],
                     ]],
 
