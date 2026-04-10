@@ -45,6 +45,19 @@ class MotionDetectorControl extends IPSModule
 
         // Zeitplan A (Boolean = false oder keine Variable)
         $this->RegisterPropertyString('TimeScheduleA', '[]');
+        // Aktion beim Umschalten der Tag/Nacht-Variable (Modus 1)
+        $this->RegisterPropertyInteger('SwitchActionVariableA', 0);
+        $this->RegisterPropertyInteger('SwitchActionTypeA', 0);
+        $this->RegisterPropertyBoolean('SwitchActionBoolA', false);
+        $this->RegisterPropertyFloat('SwitchActionFloatA', 0.0);
+        $this->RegisterPropertyInteger('SwitchActionIntA', 0);
+        $this->RegisterPropertyString('SwitchActionStringA', '');
+        $this->RegisterPropertyInteger('SwitchActionVariableB', 0);
+        $this->RegisterPropertyInteger('SwitchActionTypeB', 0);
+        $this->RegisterPropertyBoolean('SwitchActionBoolB', false);
+        $this->RegisterPropertyFloat('SwitchActionFloatB', 0.0);
+        $this->RegisterPropertyInteger('SwitchActionIntB', 0);
+        $this->RegisterPropertyString('SwitchActionStringB', '');
 
 
         // Zeitplan B (Boolean = true)
@@ -120,11 +133,11 @@ class MotionDetectorControl extends IPSModule
             return;
         }
 
-        // Im Tag/Nacht Modus: Neuberechnung wenn Switch-Variable sich ändert
+        // Im Tag/Nacht Modus: Aktion beim Umschalten ausführen
         if ($this->ReadPropertyInteger('ScheduleMode') === 1) {
             $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
             if ($SenderID === $switchVarID) {
-                // Keine Aktion nötig - GetDayNightEntry liest den aktuellen Wert beim nächsten Schalten
+                $this->ExecuteSwitchAction();
             }
         }
     }
@@ -257,6 +270,49 @@ class MotionDetectorControl extends IPSModule
             case 1: RequestAction($targetID, $this->ReadPropertyFloat('OffValueFloat')); break;
             case 2: RequestAction($targetID, $this->ReadPropertyInteger('OffValueInt')); break;
             case 3: RequestAction($targetID, $this->ReadPropertyString('OffValueString')); break;
+        }
+    }
+
+    public function ExecuteSwitchAction(): void
+    {
+        $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+        $isB = false;
+        if ($switchVarID > 0 && IPS_VariableExists($switchVarID)) {
+            $isB = GetValueBoolean($switchVarID);
+        }
+
+        $suffix = $isB ? 'B' : 'A';
+        $label  = $isB ? 'B (true)' : 'A (false)';
+
+        $targetID = $this->ReadPropertyInteger('SwitchActionVariable' . $suffix);
+        if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+            $this->SendDebug('SwitchAction', 'Plan ' . $label . ': Keine Aktionsvariable konfiguriert', 0);
+            return;
+        }
+
+        $type = $this->ReadPropertyInteger('SwitchActionType' . $suffix);
+
+        switch ($type) {
+            case 0:
+                $val = $this->ReadPropertyBoolean('SwitchActionBool' . $suffix);
+                $this->SendDebug('SwitchAction', 'Plan ' . $label . ' → Boolean: ' . ($val ? 'true' : 'false'), 0);
+                RequestAction($targetID, $val);
+                break;
+            case 1:
+                $val = $this->ReadPropertyFloat('SwitchActionFloat' . $suffix);
+                $this->SendDebug('SwitchAction', 'Plan ' . $label . ' → Float: ' . $val, 0);
+                RequestAction($targetID, $val);
+                break;
+            case 2:
+                $val = $this->ReadPropertyInteger('SwitchActionInt' . $suffix);
+                $this->SendDebug('SwitchAction', 'Plan ' . $label . ' → Integer: ' . $val, 0);
+                RequestAction($targetID, $val);
+                break;
+            case 3:
+                $val = $this->ReadPropertyString('SwitchActionString' . $suffix);
+                $this->SendDebug('SwitchAction', 'Plan ' . $label . ' → String: ' . $val, 0);
+                RequestAction($targetID, $val);
+                break;
         }
     }
 
