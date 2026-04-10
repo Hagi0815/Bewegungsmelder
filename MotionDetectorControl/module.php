@@ -46,9 +46,7 @@ class MotionDetectorControl extends IPSModule
         // Zeitplan A (Boolean = false oder keine Variable)
         $this->RegisterPropertyString('TimeScheduleA', '[]');
 
-        // Tag/Nacht Schaltpunkte
-        $this->RegisterPropertyString('DayNightScheduleA', '[]');
-        $this->RegisterPropertyString('DayNightScheduleB', '[]');
+
         // Zeitplan B (Boolean = true)
         $this->RegisterPropertyString('TimeScheduleB', '[]');
 
@@ -305,7 +303,7 @@ class MotionDetectorControl extends IPSModule
             $useScheduleB = GetValueBoolean($scheduleVarID);
         }
 
-        $scheduleJson = $this->ReadPropertyString($useScheduleB ? 'DayNightScheduleB' : 'DayNightScheduleA');
+        $scheduleJson = $this->ReadPropertyString($useScheduleB ? 'TimeScheduleB' : 'TimeScheduleA');
         $schedule = json_decode($scheduleJson, true);
 
         if (empty($schedule)) {
@@ -509,7 +507,7 @@ class MotionDetectorControl extends IPSModule
                     'validVariableType' => [0]],
 
                 ['type' => 'Label', 'caption' => $scheduleMode === 0 ? 'Zeitplan A (Boolean = false oder keine Variable gewählt)' : 'Tag/Nacht A (Boolean = false oder keine Variable)'],
-                ['type' => 'List', 'name' => $scheduleMode === 0 ? 'TimeScheduleA' : 'DayNightScheduleA', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
+                ['type' => 'List', 'name' => 'TimeScheduleA', 'caption' => $scheduleMode === 0 ? 'Zeitplan A' : 'Tag/Nacht A', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => array_merge(
                         $scheduleMode === 0 ? [
                             ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
@@ -525,7 +523,7 @@ class MotionDetectorControl extends IPSModule
                 ['type' => 'Label', 'caption' => ' '],
 
                 ['type' => 'Label', 'caption' => $scheduleMode === 0 ? 'Zeitplan B (Boolean = true)' : 'Tag/Nacht B (Boolean = true)'],
-                ['type' => 'List', 'name' => $scheduleMode === 0 ? 'TimeScheduleB' : 'DayNightScheduleB', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
+                ['type' => 'List', 'name' => 'TimeScheduleB', 'caption' => $scheduleMode === 0 ? 'Zeitplan B' : 'Tag/Nacht B', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => array_merge(
                         $scheduleMode === 0 ? [
                             ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
