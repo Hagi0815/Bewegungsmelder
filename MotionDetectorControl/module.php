@@ -597,9 +597,45 @@ class MotionDetectorControl extends IPSModule
                         ]
                     ),
                 ],
+
+                // ── Aktion beim Umschalten ──────────────────────────────
+                ['type' => 'Label', 'caption' => ' '],
+                ['type' => 'Label', 'bold' => true, 'caption' => 'Aktion beim Umschalten' . ($scheduleMode === 1 ? ' der Tag/Nacht-Variable' : ' (nur im Tag/Nacht Modus aktiv)')],
+                ['type' => 'Label', 'caption' => 'Wird sofort ausgeführt wenn die Boolean-Variable umschaltet'],
+
+                ['type' => 'Label', 'caption' => 'Aktion bei Plan A (Boolean = false)'],
+                ['type' => 'SelectVariable', 'name' => 'SwitchActionVariableA', 'caption' => 'Variable'],
+                ['type' => 'Select', 'name' => 'SwitchActionTypeA', 'caption' => 'Typ', 'options' => [
+                    ['caption' => 'Boolean', 'value' => 0],
+                    ['caption' => 'Float',   'value' => 1],
+                    ['caption' => 'Integer', 'value' => 2],
+                    ['caption' => 'String',  'value' => 3],
+                ]],
+                ['type' => 'RowLayout', 'items' => [
+                    ['type' => 'CheckBox',         'name' => 'SwitchActionBoolA',   'caption' => 'Boolean'],
+                    ['type' => 'NumberSpinner',     'name' => 'SwitchActionFloatA',  'caption' => 'Float', 'digits' => 2],
+                    ['type' => 'NumberSpinner',     'name' => 'SwitchActionIntA',    'caption' => 'Integer'],
+                    ['type' => 'ValidationTextBox', 'name' => 'SwitchActionStringA', 'caption' => 'String'],
+                ]],
+
+                ['type' => 'Label', 'caption' => ' '],
+                ['type' => 'Label', 'caption' => 'Aktion bei Plan B (Boolean = true)'],
+                ['type' => 'SelectVariable', 'name' => 'SwitchActionVariableB', 'caption' => 'Variable'],
+                ['type' => 'Select', 'name' => 'SwitchActionTypeB', 'caption' => 'Typ', 'options' => [
+                    ['caption' => 'Boolean', 'value' => 0],
+                    ['caption' => 'Float',   'value' => 1],
+                    ['caption' => 'Integer', 'value' => 2],
+                    ['caption' => 'String',  'value' => 3],
+                ]],
+                ['type' => 'RowLayout', 'items' => [
+                    ['type' => 'CheckBox',         'name' => 'SwitchActionBoolB',   'caption' => 'Boolean'],
+                    ['type' => 'NumberSpinner',     'name' => 'SwitchActionFloatB',  'caption' => 'Float', 'digits' => 2],
+                    ['type' => 'NumberSpinner',     'name' => 'SwitchActionIntB',    'caption' => 'Integer'],
+                    ['type' => 'ValidationTextBox', 'name' => 'SwitchActionStringB', 'caption' => 'String'],
+                ]],
             ],
 
-                        'actions' => [
+            'actions' => [
                 ['type' => 'Button', 'caption' => 'Einschalten (Test)', 'onClick' => 'MDC_SwitchOn($id);'],
                 ['type' => 'Button', 'caption' => 'Ausschalten (Test)', 'onClick' => 'MDC_SwitchOff($id);'],
             ],
