@@ -40,11 +40,15 @@ class MotionDetectorControl extends IPSModule
         // Zeitplan-Variable (Boolean)
         $this->RegisterPropertyInteger('TimeScheduleVariable', 0);
 
+        // Schaltpunkt-Modus: 0 = Zeitplan, 1 = Tag/Nacht
+        $this->RegisterPropertyInteger('ScheduleMode', 0);
+
         // Zeitplan A (Boolean = false oder keine Variable)
         $this->RegisterPropertyString('TimeScheduleA', '[]');
 
         // Tag/Nacht Schaltpunkte
-        $this->RegisterPropertyString('DayNightSchedule', '[]');
+        $this->RegisterPropertyString('DayNightScheduleA', '[]');
+        $this->RegisterPropertyString('DayNightScheduleB', '[]');
         // Zeitplan B (Boolean = true)
         $this->RegisterPropertyString('TimeScheduleB', '[]');
 
@@ -75,6 +79,12 @@ class MotionDetectorControl extends IPSModule
 
         $this->UpdateRestlaufzeitProfile();
 
+        // TimeScheduleVariable auch für Tag/Nacht Modus registrieren
+        $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+        if ($switchVarID > 0 && IPS_VariableExists($switchVarID)) {
+            $this->RegisterMessage($switchVarID, VM_UPDATE);
+        }
+
         for ($n = 1; $n <= 3; $n++) {
             $id = $this->ReadPropertyInteger('MotionSensor' . $n);
             if ($id > 0 && IPS_VariableExists($id)) {
@@ -82,20 +92,6 @@ class MotionDetectorControl extends IPSModule
             }
         }
 
-        // Tag/Nacht Schaltpunkte: auf Änderungen der Boolean-Variablen registrieren
-        $dayNight = json_decode($this->ReadPropertyString('DayNightSchedule'), true);
-        if (!empty($dayNight)) {
-            $registered = [];
-            foreach ($dayNight as $entry) {
-                if (!empty($entry['TriggerVar']) && !in_array($entry['TriggerVar'], $registered)) {
-                    $id = (int) $entry['TriggerVar'];
-                    if ($id > 0 && IPS_VariableExists($id)) {
-                        $this->RegisterMessage($id, VM_UPDATE);
-                        $registered[] = $entry['TriggerVar'];
-                    }
-                }
-            }
-        }
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
@@ -121,8 +117,13 @@ class MotionDetectorControl extends IPSModule
             return;
         }
 
-        // Tag/Nacht Schaltpunkt
-        $this->HandleDayNightTrigger($SenderID);
+        // Im Tag/Nacht Modus: Neuberechnung wenn Switch-Variable sich ändert
+        if ($this->ReadPropertyInteger('ScheduleMode') === 1) {
+            $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+            if ($SenderID === $switchVarID) {
+                // Keine Aktion nötig - GetDayNightEntry liest den aktuellen Wert beim nächsten Schalten
+            }
+        }
     }
 
     public function SwitchOn(): void
@@ -295,9 +296,47 @@ class MotionDetectorControl extends IPSModule
         }
     }
 
+    private function GetDayNightEntry()
+    {
+        // Tag/Nacht Variable prüfen (True = Zeitplan A, False = Zeitplan B equivalent)
+        $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+        $useScheduleB = false;
+        if ($scheduleVarID > 0 && IPS_VariableExists($scheduleVarID)) {
+            $useScheduleB = GetValueBoolean($scheduleVarID);
+        }
+
+        $scheduleJson = $this->ReadPropertyString($useScheduleB ? 'DayNightScheduleB' : 'DayNightScheduleA');
+        $schedule = json_decode($scheduleJson, true);
+
+        if (empty($schedule)) {
+            return null;
+        }
+
+        // Im Tag/Nacht Modus gibt es keinen Zeitfilter - immer aktiv
+        foreach ($schedule as $entry) {
+            if (!isset($entry['Value'])) {
+                continue;
+            }
+            return [
+                'on'  => isset($entry['Value'])    && $entry['Value']    !== '' ? $entry['Value']    : null,
+                'off' => isset($entry['ValueOff']) && $entry['ValueOff'] !== '' ? $entry['ValueOff'] : null,
+            ];
+        }
+
+        return null;
+    }
+
     // Returns array ['on' => value, 'off' => value] or null if no match
     private function GetScheduleEntry()
     {
+        $mode = $this->ReadPropertyInteger('ScheduleMode');
+
+        if ($mode === 1) {
+            // Tag/Nacht Modus
+            return $this->GetDayNightEntry();
+        }
+
+        // Zeitplan Modus
         $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
         $useScheduleB = false;
         if ($scheduleVarID > 0 && IPS_VariableExists($scheduleVarID)) {
@@ -361,8 +400,7 @@ class MotionDetectorControl extends IPSModule
     public function GetConfigurationForm(): string
     {
         $onVarID       = $this->ReadPropertyInteger('OnVariable');
-        // DayNight: collect all target variable options dynamically per row
-        $dayNightJson  = $this->ReadPropertyString('DayNightSchedule');
+        $scheduleMode  = $this->ReadPropertyInteger('ScheduleMode');
         $offVarID      = $this->ReadPropertyInteger('OffVariable');
         $noMotionVarID = $this->ReadPropertyInteger('NoMotionVariable');
 
@@ -458,30 +496,46 @@ class MotionDetectorControl extends IPSModule
 
                 ['type' => 'Label', 'caption' => ' '],
 
-                // ── Zeitplan ─────────────────────────────────────────────
-                ['type' => 'Label', 'bold' => true, 'caption' => 'Zeitplan'],
-                ['type' => 'SelectVariable', 'name' => 'TimeScheduleVariable', 'caption' => 'Zeitplan-Umschalter (Boolean, leer = Zeitplan A aktiv)', 'validVariableType' => [0]],
+                // ── Schaltpunkte ─────────────────────────────────────────
+                ['type' => 'Label', 'bold' => true, 'caption' => 'Schaltpunkte'],
+                ['type' => 'Select', 'name' => 'ScheduleMode', 'caption' => 'Modus', 'options' => [
+                    ['caption' => 'Zeitplan (Uhrzeit)', 'value' => 0],
+                    ['caption' => 'Tag/Nacht (Boolean)', 'value' => 1],
+                ]],
+                ['type' => 'SelectVariable', 'name' => 'TimeScheduleVariable',
+                    'caption' => $scheduleMode === 0
+                        ? 'Zeitplan-Umschalter (Boolean, leer = Zeitplan A aktiv)'
+                        : 'Tag/Nacht Variable (Boolean: false = A, true = B)',
+                    'validVariableType' => [0]],
 
-                ['type' => 'Label', 'caption' => 'Zeitplan A (Boolean = false oder keine Variable gewählt)'],
-                ['type' => 'List', 'name' => 'TimeScheduleA', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
-                    'columns' => [
-                        ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        array_merge($scheduleValueColA,    ['width' => '200px']),
-                        array_merge($scheduleValueOffColA, ['width' => '200px']),
-                    ],
+                ['type' => 'Label', 'caption' => $scheduleMode === 0 ? 'Zeitplan A (Boolean = false oder keine Variable gewählt)' : 'Tag/Nacht A (Boolean = false oder keine Variable)'],
+                ['type' => 'List', 'name' => $scheduleMode === 0 ? 'TimeScheduleA' : 'DayNightScheduleA', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
+                    'columns' => array_merge(
+                        $scheduleMode === 0 ? [
+                            ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
+                            ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ] : [],
+                        [
+                            array_merge($scheduleValueColA,    ['width' => '200px']),
+                            array_merge($scheduleValueOffColA, ['width' => '200px']),
+                        ]
+                    ),
                 ],
 
                 ['type' => 'Label', 'caption' => ' '],
 
-                ['type' => 'Label', 'caption' => 'Zeitplan B (Boolean = true)'],
-                ['type' => 'List', 'name' => 'TimeScheduleB', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
-                    'columns' => [
-                        ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        array_merge($scheduleValueColB,    ['width' => '200px']),
-                        array_merge($scheduleValueOffColB, ['width' => '200px']),
-                    ],
+                ['type' => 'Label', 'caption' => $scheduleMode === 0 ? 'Zeitplan B (Boolean = true)' : 'Tag/Nacht B (Boolean = true)'],
+                ['type' => 'List', 'name' => $scheduleMode === 0 ? 'TimeScheduleB' : 'DayNightScheduleB', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
+                    'columns' => array_merge(
+                        $scheduleMode === 0 ? [
+                            ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
+                            ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ] : [],
+                        [
+                            array_merge($scheduleValueColB,    ['width' => '200px']),
+                            array_merge($scheduleValueOffColB, ['width' => '200px']),
+                        ]
+                    ),
                 ],
             ],
 
