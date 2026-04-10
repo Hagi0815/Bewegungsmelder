@@ -244,19 +244,12 @@ class MotionDetectorControl extends IPSModule
         $now = (int) date('H') * 60 + (int) date('i');
 
         foreach ($schedule as $entry) {
-            if (empty($entry['From']) || empty($entry['To'])) {
+            if (!isset($entry['FromH']) || !isset($entry['ToH'])) {
                 continue;
             }
 
-            $fromParts = explode(':', $entry['From']);
-            $toParts   = explode(':', $entry['To']);
-
-            if (count($fromParts) < 2 || count($toParts) < 2) {
-                continue;
-            }
-
-            $from = (int) $fromParts[0] * 60 + (int) $fromParts[1];
-            $to   = (int) $toParts[0] * 60 + (int) $toParts[1];
+            $from = (int) $entry['FromH'] * 60 + (int) $entry['FromM'];
+            $to   = (int) $entry['ToH']   * 60 + (int) $entry['ToM'];
 
             $inRange = false;
             if ($from <= $to) {
@@ -320,11 +313,13 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'SelectVariable', 'name' => 'MotionSensor2', 'caption' => 'Bewegungsmelder 2 (optional)', 'validVariableType' => [0, 1, 2]],
                         ['type' => 'SelectVariable', 'name' => 'MotionSensor3', 'caption' => 'Bewegungsmelder 3 (optional)', 'validVariableType' => [0, 1, 2]],
                         ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'CheckBox', 'name' => 'MotionSensor1', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'NumberSpinner', 'name' => 'DurationValue', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'NumberSpinner', 'name' => 'DurationValue', 'caption' => ' ', 'visible' => false],
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'SelectVariable', 'name' => 'MotionSensor1', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'Select', 'name' => 'OnVariableType', 'caption' => ' ', 'visible' => false, 'options' => [['caption' => ' ', 'value' => 0]]],
                     ]],
 
                     ['type' => 'ExpansionPanel', 'caption' => 'Einschalten', 'expanded' => true, 'items' => [
@@ -341,8 +336,8 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'NumberSpinner', 'name' => 'OnValueInt',   'caption' => 'Integer EIN'],
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'SelectVariable', 'name' => 'OnVariable', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'Select', 'name' => 'OnVariableType', 'caption' => ' ', 'visible' => false, 'options' => [['caption' => ' ', 'value' => 0]]],
                     ]],
 
                     ['type' => 'ExpansionPanel', 'caption' => 'Ausschalten', 'expanded' => true, 'items' => [
@@ -391,8 +386,10 @@ class MotionDetectorControl extends IPSModule
                 ['type' => 'Label', 'caption' => 'Zeitplan A (Boolean = false oder keine Variable gewählt)'],
                 ['type' => 'List', 'name' => 'TimeScheduleA', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => [
-                        ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ['caption' => 'Von Std', 'name' => 'FromH', 'width' => '80px', 'add' => 7,  'edit' => ['type' => 'NumberSpinner', 'minimum' => 0, 'maximum' => 23]],
+                        ['caption' => 'Von Min', 'name' => 'FromM', 'width' => '80px', 'add' => 0,  'edit' => ['type' => 'NumberSpinner', 'minimum' => 0, 'maximum' => 59]],
+                        ['caption' => 'Bis Std', 'name' => 'ToH',   'width' => '80px', 'add' => 22, 'edit' => ['type' => 'NumberSpinner', 'minimum' => 0, 'maximum' => 23]],
+                        ['caption' => 'Bis Min', 'name' => 'ToM',   'width' => '80px', 'add' => 0,  'edit' => ['type' => 'NumberSpinner', 'minimum' => 0, 'maximum' => 59]],
                         array_merge($scheduleValueColA,    ['width' => '200px']),
                         array_merge($scheduleValueOffColA, ['width' => '200px']),
                     ],
@@ -403,8 +400,10 @@ class MotionDetectorControl extends IPSModule
                 ['type' => 'Label', 'caption' => 'Zeitplan B (Boolean = true)'],
                 ['type' => 'List', 'name' => 'TimeScheduleB', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => [
-                        ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
-                        ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ['caption' => 'Von Std', 'name' => 'FromH', 'width' => '80px', 'add' => 7,  'edit' => ['type' => 'NumberSpinner', 'minimum' => 0, 'maximum' => 23]],
+                        ['caption' => 'Von Min', 'name' => 'FromM', 'width' => '80px', 'add' => 0,  'edit' => ['type' => 'NumberSpinner', 'minimum' => 0, 'maximum' => 59]],
+                        ['caption' => 'Bis Std', 'name' => 'ToH',   'width' => '80px', 'add' => 22, 'edit' => ['type' => 'NumberSpinner', 'minimum' => 0, 'maximum' => 23]],
+                        ['caption' => 'Bis Min', 'name' => 'ToM',   'width' => '80px', 'add' => 0,  'edit' => ['type' => 'NumberSpinner', 'minimum' => 0, 'maximum' => 59]],
                         array_merge($scheduleValueColB,    ['width' => '200px']),
                         array_merge($scheduleValueOffColB, ['width' => '200px']),
                     ],
