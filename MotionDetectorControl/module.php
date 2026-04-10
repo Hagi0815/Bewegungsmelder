@@ -461,6 +461,24 @@ class MotionDetectorControl extends IPSModule
     {
         $onVarID       = $this->ReadPropertyInteger('OnVariable');
         $scheduleMode  = $this->ReadPropertyInteger('ScheduleMode');
+
+        // Profilwerte für Aktionsvariablen
+        $switchVarAID     = $this->ReadPropertyInteger('SwitchActionVariableA');
+        $switchVarBID     = $this->ReadPropertyInteger('SwitchActionVariableB');
+        $switchOptionsA   = $this->GetProfileOptions($switchVarAID);
+        $switchOptionsB   = $this->GetProfileOptions($switchVarBID);
+        $switchTypeA      = $this->ReadPropertyInteger('SwitchActionTypeA');
+        $switchTypeB      = $this->ReadPropertyInteger('SwitchActionTypeB');
+
+        // String-Feld für Aktionsvariable A
+        $switchStringEditA = ($switchTypeA === 3 && !empty($switchOptionsA))
+            ? ['type' => 'Select', 'options' => $switchOptionsA]
+            : ['type' => 'ValidationTextBox'];
+
+        // String-Feld für Aktionsvariable B
+        $switchStringEditB = ($switchTypeB === 3 && !empty($switchOptionsB))
+            ? ['type' => 'Select', 'options' => $switchOptionsB]
+            : ['type' => 'ValidationTextBox'];
         $offVarID      = $this->ReadPropertyInteger('OffVariable');
         $noMotionVarID = $this->ReadPropertyInteger('NoMotionVariable');
 
@@ -612,10 +630,10 @@ class MotionDetectorControl extends IPSModule
                     ['caption' => 'String',  'value' => 3],
                 ]],
                 ['type' => 'RowLayout', 'items' => [
-                    ['type' => 'CheckBox',         'name' => 'SwitchActionBoolA',   'caption' => 'Boolean'],
-                    ['type' => 'NumberSpinner',     'name' => 'SwitchActionFloatA',  'caption' => 'Float', 'digits' => 2],
-                    ['type' => 'NumberSpinner',     'name' => 'SwitchActionIntA',    'caption' => 'Integer'],
-                    ['type' => 'ValidationTextBox', 'name' => 'SwitchActionStringA', 'caption' => 'String'],
+                    ['type' => 'CheckBox',     'name' => 'SwitchActionBoolA',  'caption' => 'Boolean'],
+                    ['type' => 'NumberSpinner', 'name' => 'SwitchActionFloatA', 'caption' => 'Float', 'digits' => 2],
+                    ['type' => 'NumberSpinner', 'name' => 'SwitchActionIntA',   'caption' => 'Integer'],
+                    array_merge(['name' => 'SwitchActionStringA', 'caption' => 'String'], $switchStringEditA),
                 ]],
 
                 ['type' => 'Label', 'caption' => ' '],
@@ -628,10 +646,10 @@ class MotionDetectorControl extends IPSModule
                     ['caption' => 'String',  'value' => 3],
                 ]],
                 ['type' => 'RowLayout', 'items' => [
-                    ['type' => 'CheckBox',         'name' => 'SwitchActionBoolB',   'caption' => 'Boolean'],
-                    ['type' => 'NumberSpinner',     'name' => 'SwitchActionFloatB',  'caption' => 'Float', 'digits' => 2],
-                    ['type' => 'NumberSpinner',     'name' => 'SwitchActionIntB',    'caption' => 'Integer'],
-                    ['type' => 'ValidationTextBox', 'name' => 'SwitchActionStringB', 'caption' => 'String'],
+                    ['type' => 'CheckBox',     'name' => 'SwitchActionBoolB',  'caption' => 'Boolean'],
+                    ['type' => 'NumberSpinner', 'name' => 'SwitchActionFloatB', 'caption' => 'Float', 'digits' => 2],
+                    ['type' => 'NumberSpinner', 'name' => 'SwitchActionIntB',   'caption' => 'Integer'],
+                    array_merge(['name' => 'SwitchActionStringB', 'caption' => 'String'], $switchStringEditB),
                 ]],
             ],
 
