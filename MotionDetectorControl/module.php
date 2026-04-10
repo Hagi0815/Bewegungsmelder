@@ -42,6 +42,9 @@ class MotionDetectorControl extends IPSModule
 
         // Zeitplan A (Boolean = false oder keine Variable)
         $this->RegisterPropertyString('TimeScheduleA', '[]');
+
+        // Tag/Nacht Schaltpunkte
+        $this->RegisterPropertyString('DayNightSchedule', '[]');
         // Zeitplan B (Boolean = true)
         $this->RegisterPropertyString('TimeScheduleB', '[]');
 
@@ -78,6 +81,21 @@ class MotionDetectorControl extends IPSModule
                 $this->RegisterMessage($id, VM_UPDATE);
             }
         }
+
+        // Tag/Nacht Schaltpunkte: auf Änderungen der Boolean-Variablen registrieren
+        $dayNight = json_decode($this->ReadPropertyString('DayNightSchedule'), true);
+        if (!empty($dayNight)) {
+            $registered = [];
+            foreach ($dayNight as $entry) {
+                if (!empty($entry['TriggerVar']) && !in_array($entry['TriggerVar'], $registered)) {
+                    $id = (int) $entry['TriggerVar'];
+                    if ($id > 0 && IPS_VariableExists($id)) {
+                        $this->RegisterMessage($id, VM_UPDATE);
+                        $registered[] = $entry['TriggerVar'];
+                    }
+                }
+            }
+        }
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
@@ -86,12 +104,25 @@ class MotionDetectorControl extends IPSModule
             return;
         }
 
-        $value = GetValue($SenderID);
-        if (is_bool($value) && $value === true) {
-            $this->SwitchOn();
-        } elseif ((is_int($value) || is_float($value)) && $value > 0) {
-            $this->SwitchOn();
+        // Prüfen ob Sender ein Bewegungsmelder ist
+        $sensorIDs = [];
+        for ($n = 1; $n <= 3; $n++) {
+            $id = $this->ReadPropertyInteger('MotionSensor' . $n);
+            if ($id > 0) $sensorIDs[] = $id;
         }
+
+        if (in_array($SenderID, $sensorIDs, true)) {
+            $value = GetValue($SenderID);
+            if (is_bool($value) && $value === true) {
+                $this->SwitchOn();
+            } elseif ((is_int($value) || is_float($value)) && $value > 0) {
+                $this->SwitchOn();
+            }
+            return;
+        }
+
+        // Tag/Nacht Schaltpunkt
+        $this->HandleDayNightTrigger($SenderID);
     }
 
     public function SwitchOn(): void
@@ -225,6 +256,45 @@ class MotionDetectorControl extends IPSModule
         }
     }
 
+    public function HandleDayNightTrigger(int $senderID): void
+    {
+        $dayNight = json_decode($this->ReadPropertyString('DayNightSchedule'), true);
+        if (empty($dayNight)) {
+            return;
+        }
+
+        $currentValue = GetValueBoolean($senderID);
+
+        foreach ($dayNight as $entry) {
+            if (empty($entry['TriggerVar'])) {
+                continue;
+            }
+            if ((int) $entry['TriggerVar'] !== $senderID) {
+                continue;
+            }
+
+            $expectedValue = isset($entry['TriggerValue']) && $entry['TriggerValue'] === 'true';
+            if ($currentValue !== $expectedValue) {
+                continue;
+            }
+
+            $targetID = isset($entry['TargetVar']) ? (int) $entry['TargetVar'] : 0;
+            if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+                continue;
+            }
+
+            $type  = isset($entry['TargetType']) ? (int) $entry['TargetType'] : 0;
+            $value = $entry['TargetValue'] ?? '';
+
+            switch ($type) {
+                case 0: RequestAction($targetID, ($value === 'true' || $value === '1')); break;
+                case 1: RequestAction($targetID, (float) $value); break;
+                case 2: RequestAction($targetID, (int) $value); break;
+                case 3: RequestAction($targetID, (string) $value); break;
+            }
+        }
+    }
+
     // Returns array ['on' => value, 'off' => value] or null if no match
     private function GetScheduleEntry()
     {
@@ -291,6 +361,8 @@ class MotionDetectorControl extends IPSModule
     public function GetConfigurationForm(): string
     {
         $onVarID       = $this->ReadPropertyInteger('OnVariable');
+        // DayNight: collect all target variable options dynamically per row
+        $dayNightJson  = $this->ReadPropertyString('DayNightSchedule');
         $offVarID      = $this->ReadPropertyInteger('OffVariable');
         $noMotionVarID = $this->ReadPropertyInteger('NoMotionVariable');
 
