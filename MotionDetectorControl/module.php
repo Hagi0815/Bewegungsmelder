@@ -64,6 +64,10 @@ class MotionDetectorControl extends IPSModule
         $this->RegisterPropertyString('TimeScheduleB', '[]');
 
         $this->RegisterTimer('SwitchOffTimer', 0, 'MDC_SwitchOff(' . $this->InstanceID . ');');
+
+        // Aktivierungs-Variable (true = aktiv, false = deaktiviert)
+        $this->RegisterVariableBoolean('Active', 'Aktiv', '~Switch', 0);
+        $this->EnableAction('Active');
         $this->RegisterTimer('CountdownTimer', 0, 'MDC_UpdateCountdown(' . $this->InstanceID . ');');
 
         // Profile für Restlaufzeit
@@ -89,6 +93,14 @@ class MotionDetectorControl extends IPSModule
         parent::ApplyChanges();
 
         $this->UpdateRestlaufzeitProfile();
+
+        // Aktiv-Variable registrieren
+        $isNew = @$this->GetIDForIdent('Active') == false;
+        $this->RegisterVariableBoolean('Active', 'Aktiv', '~Switch', -1);
+        $this->EnableAction('Active');
+        if ($isNew) {
+            $this->SetValue('Active', true);
+        }
 
         // TimeScheduleVariable auch für Tag/Nacht Modus registrieren
         $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
@@ -119,6 +131,11 @@ class MotionDetectorControl extends IPSModule
         }
 
         if (in_array($SenderID, $sensorIDs, true)) {
+            // Modul deaktiviert?
+            if (!$this->GetValue('Active')) {
+                $this->SendDebug('MessageSink', 'Modul deaktiviert – Bewegung ignoriert', 0);
+                return;
+            }
             $value = GetValue($SenderID);
             $this->SendDebug('MessageSink', 'Bewegungsmelder ID ' . $SenderID . ' → Wert: ' . var_export($value, true), 0);
             if (is_bool($value) && $value === true) {
@@ -139,6 +156,39 @@ class MotionDetectorControl extends IPSModule
             if ($SenderID === $switchVarID) {
                 $this->ExecuteSwitchAction();
             }
+        }
+    }
+
+    public function CreateActiveVariable(): void
+    {
+        $activeVarID = 0;
+        foreach (IPS_GetChildrenIDs($this->InstanceID) as $childID) {
+            if (IPS_ObjectExists($childID) && IPS_GetObject($childID)['ObjectIdent'] === 'Active') {
+                $activeVarID = $childID;
+                break;
+            }
+        }
+
+        if ($activeVarID === 0) {
+            $newVarID = IPS_CreateVariable(0);
+            IPS_SetParent($newVarID, $this->InstanceID);
+            IPS_SetIdent($newVarID, 'Active');
+            IPS_SetName($newVarID, 'Aktiv');
+            IPS_SetVariableCustomProfile($newVarID, '~Switch');
+            IPS_SetVariableCustomAction($newVarID, $this->InstanceID);
+            SetValueBoolean($newVarID, true);
+            echo 'Aktiv-Variable angelegt (ID: ' . $newVarID . ')';
+        } else {
+            echo 'Aktiv-Variable bereits vorhanden (ID: ' . $activeVarID . ')';
+        }
+    }
+
+    public function RequestAction($ident, $value): void
+    {
+        if ($ident === 'Active') {
+            $this->SetValue('Active', (bool) $value);
+            $this->SendDebug('RequestAction', 'Modul ' . ($value ? 'aktiviert' : 'deaktiviert'), 0);
+            return;
         }
     }
 
@@ -656,6 +706,7 @@ class MotionDetectorControl extends IPSModule
             'actions' => [
                 ['type' => 'Button', 'caption' => 'Einschalten (Test)', 'onClick' => 'MDC_SwitchOn($id);'],
                 ['type' => 'Button', 'caption' => 'Ausschalten (Test)', 'onClick' => 'MDC_SwitchOff($id);'],
+                ['type' => 'Button', 'caption' => 'Aktiv-Variable anlegen', 'onClick' => 'IPS_ApplyChanges($id); echo "Variable wurde angelegt";'],
             ],
             'status' => [
                 ['code' => 102, 'icon' => 'active', 'caption' => 'Bereit'],
