@@ -31,6 +31,7 @@ class MotionDetectorControl extends IPSModule
         // Keine Bewegung Variable (optional, für Zeitplan-Wert bei keine Bewegung)
         $this->RegisterPropertyInteger('NoMotionVariable', 0);
         $this->RegisterPropertyInteger('NoMotionVariableType', 0);
+        $this->RegisterPropertyString('NoMotionValueString', '');
         $this->RegisterPropertyInteger('OffVariableType', 0);
         $this->RegisterPropertyBoolean('OffValueBool', false);
         $this->RegisterPropertyFloat('OffValueFloat', 0.0);
@@ -278,10 +279,21 @@ class MotionDetectorControl extends IPSModule
                 }
                 $type = $this->ReadPropertyInteger('OffVariableType');
             }
-            if ($type === 0) {
-                $this->SendValue($targetID, ($scheduleOffValue === 'true' || $scheduleOffValue === '1'), $type);
+            if ($scheduleOffValue !== '' && $scheduleOffValue !== null) {
+                // Schaltpunkt-Wert verwenden
+                if ($type === 0) {
+                    $this->SendValue($targetID, ($scheduleOffValue === 'true' || $scheduleOffValue === '1'), $type);
+                } else {
+                    $this->SendValue($targetID, $scheduleOffValue, $type);
+                }
             } else {
-                $this->SendValue($targetID, $scheduleOffValue, $type);
+                // NoMotionValueString als Fallback
+                $noMotionStr = $this->ReadPropertyString('NoMotionValueString');
+                if ($type === 3 && $noMotionStr !== '') {
+                    RequestAction($targetID, $noMotionStr);
+                } else {
+                    $this->SendOffValue($targetID, $type);
+                }
             }
         } else {
             // Standard Ausschalten
@@ -568,6 +580,11 @@ class MotionDetectorControl extends IPSModule
 
         $noMotionType = $this->ReadPropertyInteger('NoMotionVariableType');
 
+        // String-Feld für NoMotion-Variable
+        $noMotionStringEdit = ($noMotionType === 3 && !empty($noMotionOptions))
+            ? ['type' => 'Select', 'options' => $noMotionOptions]
+            : ['type' => 'ValidationTextBox'];
+
         $onType  = $this->ReadPropertyInteger('OnVariableType');
         $offType = $this->ReadPropertyInteger('OffVariableType');
 
@@ -658,6 +675,7 @@ class MotionDetectorControl extends IPSModule
                             ['caption' => 'Integer', 'value' => 2],
                             ['caption' => 'String',  'value' => 3],
                         ]],
+                        array_merge(['name' => 'NoMotionValueString', 'caption' => 'String (keine Bewegung)'], $noMotionStringEdit),
                     ]],
                 ]],
 
