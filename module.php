@@ -94,6 +94,10 @@ class MotionDetectorControl extends IPSModule
 
         $this->UpdateRestlaufzeitProfile();
 
+        // Aktiv-Variable sicherstellen (auch bei bestehenden Instanzen)
+        $this->RegisterVariableBoolean('Active', 'Aktiv', '~Switch', 0);
+        $this->EnableAction('Active');
+
         // Aktiv-Variable auf true setzen falls Variable neu angelegt wurde
         // IPS_ObjectExists prüft ob die Variable schon einen gesetzten Wert hat
         $activeVarID = @$this->GetIDForIdent('Active');
