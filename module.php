@@ -103,12 +103,11 @@ class MotionDetectorControl extends IPSModule
             IPS_SetIdent($newVarID, 'Active');
             IPS_SetName($newVarID, 'Aktiv');
             IPS_SetVariableCustomProfile($newVarID, '~Switch');
-            IPS_SetVariableCustomAction($newVarID, 'MDC_RequestAction');
+            IPS_SetVariableCustomAction($newVarID, $this->InstanceID);
             SetValueBoolean($newVarID, true);
             $this->SendDebug('ApplyChanges', 'Aktiv-Variable neu angelegt (ID: ' . $newVarID . ')', 0);
         } else {
-            // Variable existiert – Action sicherstellen
-            IPS_SetVariableCustomAction($activeVarID, 'MDC_RequestAction');
+            IPS_SetVariableCustomAction($activeVarID, $this->InstanceID);
         }
 
         // TimeScheduleVariable auch für Tag/Nacht Modus registrieren
