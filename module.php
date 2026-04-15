@@ -94,10 +94,15 @@ class MotionDetectorControl extends IPSModule
 
         $this->UpdateRestlaufzeitProfile();
 
-        // Aktiv-Variable auf true setzen falls noch nicht initialisiert
-        if ($this->GetValue('Active') === false && !$this->GetBuffer('ActiveInitialized')) {
-            $this->SetValue('Active', true);
-            $this->SetBuffer('ActiveInitialized', '1');
+        // Aktiv-Variable auf true setzen falls Variable neu angelegt wurde
+        // IPS_ObjectExists prüft ob die Variable schon einen gesetzten Wert hat
+        $activeVarID = @$this->GetIDForIdent('Active');
+        if ($activeVarID > 0) {
+            $var = IPS_GetVariable($activeVarID);
+            // Nur setzen wenn der Wert noch nie gesetzt wurde (ValueChanged = false und Wert = false)
+            if (!$var['VariableChanged'] && $this->GetValue('Active') === false) {
+                $this->SetValue('Active', true);
+            }
         }
 
         // TimeScheduleVariable auch für Tag/Nacht Modus registrieren
