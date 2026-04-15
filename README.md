@@ -206,7 +206,6 @@ Variable wieder auf `false`:
 
 ## Installation
 
-1. Ordner `MotionDetectorControl` nach `modules/Bewegungsmelder/` in IP-Symcon kopieren
-2. In der IPS-Verwaltungskonsole: **Modulverwaltung → + → URL:** `https://github.com/Hagi0815/Bewegungsmelder`
-3. Instanz anlegen: Objektbaum → `+` → Instanz → **MotionDetectorControl**
-4. Konfiguration speichern – die Variablen `Aktiv` und `Restlaufzeit` werden automatisch angelegt
+1. In der IPS-Verwaltungskonsole: **Modulverwaltung → + → URL:** `https://github.com/Hagi0815/Bewegungsmelder`
+2. Instanz anlegen: Objektbaum → `+` → Instanz → **MotionDetectorControl**
+3. Konfiguration speichern – die Variablen `Aktiv` und `Restlaufzeit` werden automatisch angelegt
