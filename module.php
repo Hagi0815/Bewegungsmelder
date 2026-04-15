@@ -1,0 +1,749 @@
+<?php
+
+declare(strict_types=1);
+
+class MotionDetectorControl extends IPSModule
+{
+    public function Create(): void
+    {
+        parent::Create();
+
+        // Bewegungsmelder
+        $this->RegisterPropertyInteger('MotionSensor1', 0);
+        $this->RegisterPropertyInteger('MotionSensor2', 0);
+        $this->RegisterPropertyInteger('MotionSensor3', 0);
+
+        // Einschaltdauer
+        $this->RegisterPropertyInteger('DurationValue', 30);
+        $this->RegisterPropertyInteger('DurationUnit', 0);
+
+        // Einschalten-Variable
+        $this->RegisterPropertyInteger('OnVariable', 0);
+        $this->RegisterPropertyInteger('OnVariableType', 0);
+        $this->RegisterPropertyBoolean('OnValueBool', true);
+        $this->RegisterPropertyFloat('OnValueFloat', 1.0);
+        $this->RegisterPropertyInteger('OnValueInt', 1);
+        $this->RegisterPropertyString('OnValueString', 'EIN');
+
+        // Ausschalten-Variable
+        $this->RegisterPropertyInteger('OffVariable', 0);
+
+        // Keine Bewegung Variable (optional, für Zeitplan-Wert bei keine Bewegung)
+        $this->RegisterPropertyInteger('NoMotionVariable', 0);
+        $this->RegisterPropertyInteger('NoMotionVariableType', 0);
+        $this->RegisterPropertyInteger('OffVariableType', 0);
+        $this->RegisterPropertyBoolean('OffValueBool', false);
+        $this->RegisterPropertyFloat('OffValueFloat', 0.0);
+        $this->RegisterPropertyInteger('OffValueInt', 0);
+        $this->RegisterPropertyString('OffValueString', 'AUS');
+
+        // Zeitplan-Variable (Boolean)
+        $this->RegisterPropertyInteger('TimeScheduleVariable', 0);
+
+        // Schaltpunkt-Modus: 0 = Zeitplan, 1 = Tag/Nacht
+        $this->RegisterPropertyInteger('ScheduleMode', 0);
+
+        // Zeitplan A (Boolean = false oder keine Variable)
+        $this->RegisterPropertyString('TimeScheduleA', '[]');
+        // Aktion beim Umschalten der Tag/Nacht-Variable (Modus 1)
+        $this->RegisterPropertyInteger('SwitchActionVariableA', 0);
+        $this->RegisterPropertyInteger('SwitchActionTypeA', 0);
+        $this->RegisterPropertyBoolean('SwitchActionBoolA', false);
+        $this->RegisterPropertyFloat('SwitchActionFloatA', 0.0);
+        $this->RegisterPropertyInteger('SwitchActionIntA', 0);
+        $this->RegisterPropertyString('SwitchActionStringA', '');
+        $this->RegisterPropertyInteger('SwitchActionVariableB', 0);
+        $this->RegisterPropertyInteger('SwitchActionTypeB', 0);
+        $this->RegisterPropertyBoolean('SwitchActionBoolB', false);
+        $this->RegisterPropertyFloat('SwitchActionFloatB', 0.0);
+        $this->RegisterPropertyInteger('SwitchActionIntB', 0);
+        $this->RegisterPropertyString('SwitchActionStringB', '');
+
+
+        // Zeitplan B (Boolean = true)
+        $this->RegisterPropertyString('TimeScheduleB', '[]');
+
+        $this->RegisterTimer('SwitchOffTimer', 0, 'MDC_SwitchOff(' . $this->InstanceID . ');');
+
+        // Aktivierungs-Variable (true = aktiv, false = deaktiviert)
+        $this->RegisterVariableBoolean('Active', 'Aktiv', '~Switch', 0);
+        $this->EnableAction('Active');
+        $this->RegisterTimer('CountdownTimer', 0, 'MDC_UpdateCountdown(' . $this->InstanceID . ');');
+
+        // Profile für Restlaufzeit
+        if (!IPS_VariableProfileExists('MDC.Seconds')) {
+            IPS_CreateVariableProfile('MDC.Seconds', 1);
+            IPS_SetVariableProfileText('MDC.Seconds', '', ' Sek.');
+        }
+        if (!IPS_VariableProfileExists('MDC.Minutes')) {
+            IPS_CreateVariableProfile('MDC.Minutes', 1);
+            IPS_SetVariableProfileText('MDC.Minutes', '', ' Min.');
+        }
+        if (!IPS_VariableProfileExists('MDC.Hours')) {
+            IPS_CreateVariableProfile('MDC.Hours', 1);
+            IPS_SetVariableProfileText('MDC.Hours', '', ' Std.');
+        }
+
+        // Statusvariable Restlaufzeit
+        $this->RegisterVariableInteger('Restlaufzeit', 'Restlaufzeit', 'MDC.Seconds', 0);
+    }
+
+    public function ApplyChanges(): void
+    {
+        parent::ApplyChanges();
+
+        $this->UpdateRestlaufzeitProfile();
+
+        // Aktiv-Variable auf true setzen falls noch nicht initialisiert
+        if ($this->GetValue('Active') === false && !$this->GetBuffer('ActiveInitialized')) {
+            $this->SetValue('Active', true);
+            $this->SetBuffer('ActiveInitialized', '1');
+        }
+
+        // TimeScheduleVariable auch für Tag/Nacht Modus registrieren
+        $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+        if ($switchVarID > 0 && IPS_VariableExists($switchVarID)) {
+            $this->RegisterMessage($switchVarID, VM_UPDATE);
+        }
+
+        for ($n = 1; $n <= 3; $n++) {
+            $id = $this->ReadPropertyInteger('MotionSensor' . $n);
+            if ($id > 0 && IPS_VariableExists($id)) {
+                $this->RegisterMessage($id, VM_UPDATE);
+            }
+        }
+
+    }
+
+    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    {
+        if ($Message !== VM_UPDATE) {
+            return;
+        }
+
+        // Prüfen ob Sender ein Bewegungsmelder ist
+        $sensorIDs = [];
+        for ($n = 1; $n <= 3; $n++) {
+            $id = $this->ReadPropertyInteger('MotionSensor' . $n);
+            if ($id > 0) $sensorIDs[] = $id;
+        }
+
+        if (in_array($SenderID, $sensorIDs, true)) {
+            // Modul deaktiviert?
+            if (!$this->GetValue('Active')) {
+                $this->SendDebug('MessageSink', 'Modul deaktiviert – Bewegung ignoriert', 0);
+                return;
+            }
+            $value = GetValue($SenderID);
+            $this->SendDebug('MessageSink', 'Bewegungsmelder ID ' . $SenderID . ' → Wert: ' . var_export($value, true), 0);
+            if (is_bool($value) && $value === true) {
+                $this->SendDebug('MessageSink', 'Bewegung erkannt → SwitchOn', 0);
+                $this->SwitchOn();
+            } elseif ((is_int($value) || is_float($value)) && $value > 0) {
+                $this->SendDebug('MessageSink', 'Bewegung erkannt (Wert > 0) → SwitchOn', 0);
+                $this->SwitchOn();
+            } else {
+                $this->SendDebug('MessageSink', 'Keine Bewegung (Wert inaktiv)', 0);
+            }
+            return;
+        }
+
+        // Im Tag/Nacht Modus: Aktion beim Umschalten ausführen
+        if ($this->ReadPropertyInteger('ScheduleMode') === 1) {
+            $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+            if ($SenderID === $switchVarID) {
+                $this->ExecuteSwitchAction();
+            }
+        }
+    }
+
+    public function RequestAction($ident, $value): void
+    {
+        if ($ident === 'Active') {
+            $this->SetValue('Active', (bool) $value);
+            $this->SendDebug('RequestAction', 'Modul ' . ($value ? 'aktiviert' : 'deaktiviert'), 0);
+            return;
+        }
+    }
+
+    public function SwitchOn(): void
+    {
+        $targetID = $this->ReadPropertyInteger('OnVariable');
+        if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+            return;
+        }
+
+        $scheduleValue = $this->GetScheduleValue();
+        $type = $this->ReadPropertyInteger('OnVariableType');
+
+        if ($scheduleValue !== null) {
+            if ($type === 0) {
+                $this->SendValue($targetID, ($scheduleValue === 'true' || $scheduleValue === '1'), $type);
+            } else {
+                $this->SendValue($targetID, $scheduleValue, $type);
+            }
+        } else {
+            $this->SendOnValue($targetID, $type);
+        }
+
+        $value = $this->ReadPropertyInteger('DurationValue');
+        $unit  = $this->ReadPropertyInteger('DurationUnit');
+        switch ($unit) {
+            case 1: $seconds = $value * 60; break;
+            case 2: $seconds = $value * 3600; break;
+            default: $seconds = $value; break;
+        }
+        $this->SetTimerInterval('SwitchOffTimer', $seconds * 1000);
+
+        // Restlaufzeit initialisieren und Countdown-Timer starten (jede Sekunde)
+        $this->SetValue('Restlaufzeit', $value);
+        $this->SetTimerInterval('CountdownTimer', 1000);
+    }
+
+    public function SwitchOff(): void
+    {
+        $this->SetTimerInterval('SwitchOffTimer', 0);
+        $this->SetTimerInterval('CountdownTimer', 0);
+        $this->SetValue('Restlaufzeit', 0);
+
+        // Zeitplan-Wert für "keine Bewegung" prüfen
+        $scheduleOffValue = $this->GetScheduleOffValue();
+
+        if ($scheduleOffValue !== null) {
+            // Eigene NoMotion-Variable verwenden falls konfiguriert, sonst OffVariable
+            $noMotionID = $this->ReadPropertyInteger('NoMotionVariable');
+            if ($noMotionID > 0 && IPS_VariableExists($noMotionID)) {
+                $type = $this->ReadPropertyInteger('NoMotionVariableType');
+                $targetID = $noMotionID;
+            } else {
+                $targetID = $this->ReadPropertyInteger('OffVariable');
+                if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+                    return;
+                }
+                $type = $this->ReadPropertyInteger('OffVariableType');
+            }
+            if ($type === 0) {
+                $this->SendValue($targetID, ($scheduleOffValue === 'true' || $scheduleOffValue === '1'), $type);
+            } else {
+                $this->SendValue($targetID, $scheduleOffValue, $type);
+            }
+        } else {
+            // Standard Ausschalten
+            $targetID = $this->ReadPropertyInteger('OffVariable');
+            if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+                return;
+            }
+            $type = $this->ReadPropertyInteger('OffVariableType');
+            $this->SendOffValue($targetID, $type);
+        }
+    }
+
+    public function UpdateCountdown(): void
+    {
+        $current = $this->GetValue('Restlaufzeit');
+        if ($current <= 1) {
+            $this->SetValue('Restlaufzeit', 0);
+            $this->SetTimerInterval('CountdownTimer', 0);
+        } else {
+            $this->SetValue('Restlaufzeit', $current - 1);
+        }
+    }
+
+    private function UpdateRestlaufzeitProfile(): void
+    {
+        $unit = $this->ReadPropertyInteger('DurationUnit');
+        switch ($unit) {
+            case 1:
+                IPS_SetVariableCustomProfile($this->GetIDForIdent('Restlaufzeit'), 'MDC.Minutes');
+                break;
+            case 2:
+                IPS_SetVariableCustomProfile($this->GetIDForIdent('Restlaufzeit'), 'MDC.Hours');
+                break;
+            default:
+                IPS_SetVariableCustomProfile($this->GetIDForIdent('Restlaufzeit'), 'MDC.Seconds');
+                break;
+        }
+    }
+
+    // ── Hilfsmethoden ────────────────────────────────────────────────────
+
+    private function SendValue($targetID, $value, $type): void
+    {
+        switch ($type) {
+            case 0: RequestAction($targetID, (bool) $value); break;
+            case 1: RequestAction($targetID, (float) $value); break;
+            case 2: RequestAction($targetID, (int) $value); break;
+            case 3: RequestAction($targetID, (string) $value); break;
+        }
+    }
+
+    private function SendOnValue($targetID, $type): void
+    {
+        switch ($type) {
+            case 0: RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OnValueBool')); break;
+            case 1: RequestAction($targetID, $this->ReadPropertyFloat('OnValueFloat')); break;
+            case 2: RequestAction($targetID, $this->ReadPropertyInteger('OnValueInt')); break;
+            case 3: RequestAction($targetID, $this->ReadPropertyString('OnValueString')); break;
+        }
+    }
+
+    private function SendOffValue($targetID, $type): void
+    {
+        switch ($type) {
+            case 0: RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OffValueBool')); break;
+            case 1: RequestAction($targetID, $this->ReadPropertyFloat('OffValueFloat')); break;
+            case 2: RequestAction($targetID, $this->ReadPropertyInteger('OffValueInt')); break;
+            case 3: RequestAction($targetID, $this->ReadPropertyString('OffValueString')); break;
+        }
+    }
+
+    public function ExecuteSwitchAction(): void
+    {
+        $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+        $isB = false;
+        if ($switchVarID > 0 && IPS_VariableExists($switchVarID)) {
+            $isB = GetValueBoolean($switchVarID);
+        }
+
+        $suffix = $isB ? 'B' : 'A';
+        $label  = $isB ? 'B (true)' : 'A (false)';
+
+        $targetID = $this->ReadPropertyInteger('SwitchActionVariable' . $suffix);
+        if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+            $this->SendDebug('SwitchAction', 'Plan ' . $label . ': Keine Aktionsvariable konfiguriert', 0);
+            return;
+        }
+
+        $type = $this->ReadPropertyInteger('SwitchActionType' . $suffix);
+
+        switch ($type) {
+            case 0:
+                $val = $this->ReadPropertyBoolean('SwitchActionBool' . $suffix);
+                $this->SendDebug('SwitchAction', 'Plan ' . $label . ' → Boolean: ' . ($val ? 'true' : 'false'), 0);
+                RequestAction($targetID, $val);
+                break;
+            case 1:
+                $val = $this->ReadPropertyFloat('SwitchActionFloat' . $suffix);
+                $this->SendDebug('SwitchAction', 'Plan ' . $label . ' → Float: ' . $val, 0);
+                RequestAction($targetID, $val);
+                break;
+            case 2:
+                $val = $this->ReadPropertyInteger('SwitchActionInt' . $suffix);
+                $this->SendDebug('SwitchAction', 'Plan ' . $label . ' → Integer: ' . $val, 0);
+                RequestAction($targetID, $val);
+                break;
+            case 3:
+                $val = $this->ReadPropertyString('SwitchActionString' . $suffix);
+                $this->SendDebug('SwitchAction', 'Plan ' . $label . ' → String: ' . $val, 0);
+                RequestAction($targetID, $val);
+                break;
+        }
+    }
+
+    public function HandleDayNightTrigger(int $senderID): void
+    {
+        $dayNight = json_decode($this->ReadPropertyString('DayNightSchedule'), true);
+        if (empty($dayNight)) {
+            return;
+        }
+
+        $currentValue = GetValueBoolean($senderID);
+
+        foreach ($dayNight as $entry) {
+            if (empty($entry['TriggerVar'])) {
+                continue;
+            }
+            if ((int) $entry['TriggerVar'] !== $senderID) {
+                continue;
+            }
+
+            $expectedValue = isset($entry['TriggerValue']) && $entry['TriggerValue'] === 'true';
+            if ($currentValue !== $expectedValue) {
+                continue;
+            }
+
+            $targetID = isset($entry['TargetVar']) ? (int) $entry['TargetVar'] : 0;
+            if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+                continue;
+            }
+
+            $type  = isset($entry['TargetType']) ? (int) $entry['TargetType'] : 0;
+            $value = $entry['TargetValue'] ?? '';
+
+            switch ($type) {
+                case 0: RequestAction($targetID, ($value === 'true' || $value === '1')); break;
+                case 1: RequestAction($targetID, (float) $value); break;
+                case 2: RequestAction($targetID, (int) $value); break;
+                case 3: RequestAction($targetID, (string) $value); break;
+            }
+        }
+    }
+
+    private function GetDayNightEntry()
+    {
+        // Tag/Nacht Variable prüfen (True = Zeitplan A, False = Zeitplan B equivalent)
+        $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+        $useScheduleB = false;
+        if ($scheduleVarID > 0 && IPS_VariableExists($scheduleVarID)) {
+            $useScheduleB = GetValueBoolean($scheduleVarID);
+        }
+
+        $scheduleJson = $this->ReadPropertyString($useScheduleB ? 'TimeScheduleB' : 'TimeScheduleA');
+        $schedule = json_decode($scheduleJson, true);
+
+        if (empty($schedule)) {
+            return null;
+        }
+
+        // Im Tag/Nacht Modus gibt es keinen Zeitfilter - immer aktiv
+        foreach ($schedule as $entry) {
+            if (!isset($entry['Value'])) {
+                continue;
+            }
+            $onVal  = isset($entry['Value'])    && $entry['Value']    !== '' ? $entry['Value']    : null;
+            $offVal = isset($entry['ValueOff']) && $entry['ValueOff'] !== '' ? $entry['ValueOff'] : null;
+            $switchLabel = $useScheduleB ? 'B (true)' : 'A (false)';
+            $this->SendDebug('GetDayNightEntry', 'Plan ' . $switchLabel . ' aktiv | EIN: ' . ($onVal ?? 'Standard') . ' | AUS: ' . ($offVal ?? 'Standard'), 0);
+            return ['on' => $onVal, 'off' => $offVal];
+        }
+
+        return null;
+    }
+
+    // Returns array ['on' => value, 'off' => value] or null if no match
+    private function GetScheduleEntry()
+    {
+        $mode = $this->ReadPropertyInteger('ScheduleMode');
+
+        if ($mode === 1) {
+            // Tag/Nacht Modus
+            return $this->GetDayNightEntry();
+        }
+
+        // Zeitplan Modus
+        $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
+        $useScheduleB = false;
+        if ($scheduleVarID > 0 && IPS_VariableExists($scheduleVarID)) {
+            $useScheduleB = GetValueBoolean($scheduleVarID);
+        }
+
+        $scheduleJson = $this->ReadPropertyString($useScheduleB ? 'TimeScheduleB' : 'TimeScheduleA');
+        $schedule = json_decode($scheduleJson, true);
+
+        if (empty($schedule)) {
+            return null;
+        }
+
+        $now = (int) date('H') * 60 + (int) date('i');
+
+        foreach ($schedule as $entry) {
+            if (empty($entry['From']) || empty($entry['To'])) {
+                continue;
+            }
+
+            $fromParts = explode(':', $entry['From']);
+            $toParts   = explode(':', $entry['To']);
+
+            if (count($fromParts) < 2 || count($toParts) < 2) {
+                continue;
+            }
+
+            $from = (int) $fromParts[0] * 60 + (int) $fromParts[1];
+            $to   = (int) $toParts[0] * 60 + (int) $toParts[1];
+
+            $inRange = false;
+            if ($from <= $to) {
+                $inRange = ($now >= $from && $now < $to);
+            } else {
+                $inRange = ($now >= $from || $now < $to);
+            }
+
+            if ($inRange) {
+                $onVal  = isset($entry['Value'])    && $entry['Value']    !== '' ? $entry['Value']    : null;
+                $offVal = isset($entry['ValueOff']) && $entry['ValueOff'] !== '' ? $entry['ValueOff'] : null;
+                $this->SendDebug('GetScheduleEntry', 'Zeitfenster ' . $entry['From'] . '-' . $entry['To'] . ' aktiv | EIN: ' . ($onVal ?? 'Standard') . ' | AUS: ' . ($offVal ?? 'Standard'), 0);
+                return ['on' => $onVal, 'off' => $offVal];
+            }
+        }
+
+        return null;
+    }
+
+    private function GetScheduleValue()
+    {
+        $entry = $this->GetScheduleEntry();
+        return $entry !== null ? $entry['on'] : null;
+    }
+
+    private function GetScheduleOffValue()
+    {
+        $entry = $this->GetScheduleEntry();
+        return ($entry !== null && $entry['off'] !== null) ? $entry['off'] : null;
+    }
+
+    public function GetConfigurationForm(): string
+    {
+        $onVarID       = $this->ReadPropertyInteger('OnVariable');
+        $scheduleMode  = $this->ReadPropertyInteger('ScheduleMode');
+
+        // Profilwerte für Aktionsvariablen
+        $switchVarAID     = $this->ReadPropertyInteger('SwitchActionVariableA');
+        $switchVarBID     = $this->ReadPropertyInteger('SwitchActionVariableB');
+        $switchOptionsA   = $this->GetProfileOptions($switchVarAID);
+        $switchOptionsB   = $this->GetProfileOptions($switchVarBID);
+        $switchTypeA      = $this->ReadPropertyInteger('SwitchActionTypeA');
+        $switchTypeB      = $this->ReadPropertyInteger('SwitchActionTypeB');
+
+        // String-Feld für Aktionsvariable A
+        $switchStringEditA = ($switchTypeA === 3 && !empty($switchOptionsA))
+            ? ['type' => 'Select', 'options' => $switchOptionsA]
+            : ['type' => 'ValidationTextBox'];
+
+        // String-Feld für Aktionsvariable B
+        $switchStringEditB = ($switchTypeB === 3 && !empty($switchOptionsB))
+            ? ['type' => 'Select', 'options' => $switchOptionsB]
+            : ['type' => 'ValidationTextBox'];
+        $offVarID      = $this->ReadPropertyInteger('OffVariable');
+        $noMotionVarID = $this->ReadPropertyInteger('NoMotionVariable');
+
+        $onOptions       = $this->GetProfileOptions($onVarID);
+        $offOptions      = $this->GetProfileOptions($offVarID);
+        $noMotionOptions = $this->GetProfileOptions($noMotionVarID);
+
+        $noMotionType = $this->ReadPropertyInteger('NoMotionVariableType');
+
+        $onType  = $this->ReadPropertyInteger('OnVariableType');
+        $offType = $this->ReadPropertyInteger('OffVariableType');
+
+        $scheduleValueColA    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
+        $scheduleValueColB    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
+        $scheduleValueOffColA = $this->BuildValueColumn($noMotionOptions, $noMotionType, 'ValueOff', 'Wert bei keine Bewegung');
+        $scheduleValueOffColB = $this->BuildValueColumn($noMotionOptions, $noMotionType, 'ValueOff', 'Wert bei keine Bewegung');
+
+        // Standard-Einschaltwert fuer String: Dropdown wenn Profil vorhanden
+        $form = [
+            'elements' => [
+
+                // ── Zeile 1: Bewegungsmelder + Einschalten + Ausschalten ─
+                ['type' => 'RowLayout', 'items' => [
+
+                    ['type' => 'ExpansionPanel', 'caption' => 'Bewegungsmelder', 'expanded' => true, 'items' => [
+                        ['type' => 'SelectVariable', 'name' => 'MotionSensor1', 'caption' => 'Bewegungsmelder 1', 'validVariableType' => [0, 1, 2]],
+                        ['type' => 'SelectVariable', 'name' => 'MotionSensor2', 'caption' => 'Bewegungsmelder 2 (optional)', 'validVariableType' => [0, 1, 2]],
+                        ['type' => 'SelectVariable', 'name' => 'MotionSensor3', 'caption' => 'Bewegungsmelder 3 (optional)', 'validVariableType' => [0, 1, 2]],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'CheckBox', 'name' => 'OffValueBool', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'NumberSpinner', 'name' => 'OffValueFloat', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'NumberSpinner', 'name' => 'OffValueInt', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'SelectVariable', 'name' => 'NoMotionVariable', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'Select', 'name' => 'NoMotionVariableType', 'caption' => ' ', 'visible' => false, 'options' => [['caption' => ' ', 'value' => 0]]],
+                    ]],
+
+                    ['type' => 'ExpansionPanel', 'caption' => 'Einschalten', 'expanded' => true, 'items' => [
+                        ['type' => 'SelectVariable', 'name' => 'OnVariable', 'caption' => 'Variable zum Einschalten'],
+                        ['type' => 'Select', 'name' => 'OnVariableType', 'caption' => 'Variablentyp', 'options' => [
+                            ['caption' => 'Boolean', 'value' => 0],
+                            ['caption' => 'Float',   'value' => 1],
+                            ['caption' => 'Integer', 'value' => 2],
+                            ['caption' => 'String',  'value' => 3],
+                        ]],
+                        ['type' => 'Label', 'caption' => 'Standard Einschaltwert (wenn kein Zeitplan greift)'],
+                        ['type' => 'CheckBox',      'name' => 'OnValueBool',  'caption' => 'Boolean EIN'],
+                        ['type' => 'NumberSpinner', 'name' => 'OnValueFloat', 'caption' => 'Float EIN', 'digits' => 2],
+                        ['type' => 'NumberSpinner', 'name' => 'OnValueInt',   'caption' => 'Integer EIN'],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Select', 'name' => 'OffVariableType', 'caption' => ' ', 'visible' => false, 'options' => [['caption' => ' ', 'value' => 0]]],
+                    ]],
+
+                    ['type' => 'ExpansionPanel', 'caption' => 'Ausschalten', 'expanded' => true, 'items' => [
+                        ['type' => 'SelectVariable', 'name' => 'OffVariable', 'caption' => 'Variable zum Ausschalten'],
+                        ['type' => 'Select', 'name' => 'OffVariableType', 'caption' => 'Variablentyp', 'options' => [
+                            ['caption' => 'Boolean', 'value' => 0],
+                            ['caption' => 'Float',   'value' => 1],
+                            ['caption' => 'Integer', 'value' => 2],
+                            ['caption' => 'String',  'value' => 3],
+                        ]],
+                        ['type' => 'Label', 'caption' => 'Ausschaltwert'],
+                        ['type' => 'CheckBox',      'name' => 'OffValueBool',  'caption' => 'Boolean AUS'],
+                        ['type' => 'NumberSpinner', 'name' => 'OffValueFloat', 'caption' => 'Float AUS', 'digits' => 2],
+                        ['type' => 'NumberSpinner', 'name' => 'OffValueInt',   'caption' => 'Integer AUS'],
+                        ['type' => 'Label', 'caption' => ' '],
+                        ['type' => 'Label', 'caption' => 'Variable bei keine Bewegung (Zeitplan)'],
+                        ['type' => 'SelectVariable', 'name' => 'NoMotionVariable', 'caption' => 'Variable (optional)'],
+                        ['type' => 'Select', 'name' => 'NoMotionVariableType', 'caption' => 'Variablentyp', 'options' => [
+                            ['caption' => 'Boolean', 'value' => 0],
+                            ['caption' => 'Float',   'value' => 1],
+                            ['caption' => 'Integer', 'value' => 2],
+                            ['caption' => 'String',  'value' => 3],
+                        ]],
+                    ]],
+                ]],
+
+                ['type' => 'Label', 'caption' => ' '],
+
+                // ── Einschaltdauer ───────────────────────────────────────
+                ['type' => 'Label', 'bold' => true, 'caption' => 'Einschaltdauer'],
+                ['type' => 'RowLayout', 'items' => [
+                    ['type' => 'NumberSpinner', 'name' => 'DurationValue', 'caption' => 'Dauer', 'minimum' => 1, 'maximum' => 9999],
+                    ['type' => 'Select', 'name' => 'DurationUnit', 'caption' => 'Einheit', 'options' => [
+                        ['caption' => 'Sekunden', 'value' => 0],
+                        ['caption' => 'Minuten',  'value' => 1],
+                        ['caption' => 'Stunden',  'value' => 2],
+                    ]],
+                ]],
+
+                ['type' => 'Label', 'caption' => ' '],
+
+                // ── Schaltpunkte ─────────────────────────────────────────
+                ['type' => 'Label', 'bold' => true, 'caption' => 'Schaltpunkte'],
+                ['type' => 'Select', 'name' => 'ScheduleMode', 'caption' => 'Modus', 'options' => [
+                    ['caption' => 'Zeitplan (Uhrzeit)', 'value' => 0],
+                    ['caption' => 'Tag/Nacht (Boolean)', 'value' => 1],
+                ]],
+                ['type' => 'SelectVariable', 'name' => 'TimeScheduleVariable',
+                    'caption' => $scheduleMode === 0
+                        ? 'Zeitplan-Umschalter (Boolean, leer = Zeitplan A aktiv)'
+                        : 'Tag/Nacht Variable (Boolean: false = A, true = B)',
+                    'validVariableType' => [0]],
+
+                ['type' => 'Label', 'caption' => $scheduleMode === 0 ? 'Zeitplan A (Boolean = false oder keine Variable gewählt)' : 'Tag/Nacht A (Boolean = false oder keine Variable)'],
+                ['type' => 'List', 'name' => 'TimeScheduleA', 'caption' => $scheduleMode === 0 ? 'Zeitplan A' : 'Tag/Nacht A', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
+                    'columns' => array_merge(
+                        $scheduleMode === 0 ? [
+                            ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
+                            ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ] : [],
+                        [
+                            array_merge($scheduleValueColA,    ['width' => '200px']),
+                            array_merge($scheduleValueOffColA, ['width' => '200px']),
+                        ]
+                    ),
+                ],
+
+                ['type' => 'Label', 'caption' => ' '],
+
+                ['type' => 'Label', 'caption' => $scheduleMode === 0 ? 'Zeitplan B (Boolean = true)' : 'Tag/Nacht B (Boolean = true)'],
+                ['type' => 'List', 'name' => 'TimeScheduleB', 'caption' => $scheduleMode === 0 ? 'Zeitplan B' : 'Tag/Nacht B', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
+                    'columns' => array_merge(
+                        $scheduleMode === 0 ? [
+                            ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
+                            ['caption' => 'Bis', 'name' => 'To',   'width' => '100px', 'add' => '22:00', 'edit' => ['type' => 'ValidationTextBox']],
+                        ] : [],
+                        [
+                            array_merge($scheduleValueColB,    ['width' => '200px']),
+                            array_merge($scheduleValueOffColB, ['width' => '200px']),
+                        ]
+                    ),
+                ],
+
+                // ── Aktion beim Umschalten ──────────────────────────────
+                ['type' => 'Label', 'caption' => ' '],
+                ['type' => 'Label', 'bold' => true, 'caption' => 'Aktion beim Umschalten' . ($scheduleMode === 1 ? ' der Tag/Nacht-Variable' : ' (nur im Tag/Nacht Modus aktiv)')],
+                ['type' => 'Label', 'caption' => 'Wird sofort ausgeführt wenn die Boolean-Variable umschaltet'],
+
+                ['type' => 'Label', 'caption' => 'Aktion bei Plan A (Boolean = false)'],
+                ['type' => 'SelectVariable', 'name' => 'SwitchActionVariableA', 'caption' => 'Variable'],
+                ['type' => 'Select', 'name' => 'SwitchActionTypeA', 'caption' => 'Typ', 'options' => [
+                    ['caption' => 'Boolean', 'value' => 0],
+                    ['caption' => 'Float',   'value' => 1],
+                    ['caption' => 'Integer', 'value' => 2],
+                    ['caption' => 'String',  'value' => 3],
+                ]],
+                ['type' => 'RowLayout', 'items' => [
+                    ['type' => 'CheckBox',     'name' => 'SwitchActionBoolA',  'caption' => 'Boolean'],
+                    ['type' => 'NumberSpinner', 'name' => 'SwitchActionFloatA', 'caption' => 'Float', 'digits' => 2],
+                    ['type' => 'NumberSpinner', 'name' => 'SwitchActionIntA',   'caption' => 'Integer'],
+                    array_merge(['name' => 'SwitchActionStringA', 'caption' => 'String'], $switchStringEditA),
+                ]],
+
+                ['type' => 'Label', 'caption' => ' '],
+                ['type' => 'Label', 'caption' => 'Aktion bei Plan B (Boolean = true)'],
+                ['type' => 'SelectVariable', 'name' => 'SwitchActionVariableB', 'caption' => 'Variable'],
+                ['type' => 'Select', 'name' => 'SwitchActionTypeB', 'caption' => 'Typ', 'options' => [
+                    ['caption' => 'Boolean', 'value' => 0],
+                    ['caption' => 'Float',   'value' => 1],
+                    ['caption' => 'Integer', 'value' => 2],
+                    ['caption' => 'String',  'value' => 3],
+                ]],
+                ['type' => 'RowLayout', 'items' => [
+                    ['type' => 'CheckBox',     'name' => 'SwitchActionBoolB',  'caption' => 'Boolean'],
+                    ['type' => 'NumberSpinner', 'name' => 'SwitchActionFloatB', 'caption' => 'Float', 'digits' => 2],
+                    ['type' => 'NumberSpinner', 'name' => 'SwitchActionIntB',   'caption' => 'Integer'],
+                    array_merge(['name' => 'SwitchActionStringB', 'caption' => 'String'], $switchStringEditB),
+                ]],
+            ],
+
+            'actions' => [
+                ['type' => 'Button', 'caption' => 'Einschalten (Test)', 'onClick' => 'MDC_SwitchOn($id);'],
+                ['type' => 'Button', 'caption' => 'Ausschalten (Test)', 'onClick' => 'MDC_SwitchOff($id);'],
+            ],
+            'status' => [
+                ['code' => 102, 'icon' => 'active', 'caption' => 'Bereit'],
+                ['code' => 200, 'icon' => 'error',  'caption' => 'Fehler: Einschalten-Variable nicht gesetzt'],
+                ['code' => 201, 'icon' => 'error',  'caption' => 'Fehler: Kein Bewegungsmelder konfiguriert'],
+            ],
+        ];
+
+        return json_encode($form);
+    }
+
+    private function GetProfileOptions(int $variableID): array
+    {
+        if ($variableID <= 0 || !IPS_VariableExists($variableID)) {
+            return [];
+        }
+        $variable = IPS_GetVariable($variableID);
+        $profileName = $variable['VariableCustomProfile'] !== ''
+            ? $variable['VariableCustomProfile']
+            : $variable['VariableProfile'];
+        if ($profileName === '' || !IPS_VariableProfileExists($profileName)) {
+            return [];
+        }
+        $profile = IPS_GetVariableProfile($profileName);
+        $options = [];
+        foreach ($profile['Associations'] as $assoc) {
+            $options[] = ['caption' => $assoc['Name'], 'value' => (string) $assoc['Value']];
+        }
+        return $options;
+    }
+
+    private function BuildValueColumn(array $profileOptions, int $varType = 3, string $name = 'Value', string $caption = 'Einschaltwert'): array
+    {
+        // String mit Profil -> Dropdown
+        if ($varType === 3 && !empty($profileOptions)) {
+            return [
+                'caption' => $caption,
+                'name'    => $name,
+                'width'   => 'auto',
+                'add'     => $profileOptions[0]['value'] ?? '',
+                'edit'    => ['type' => 'Select', 'options' => $profileOptions],
+            ];
+        }
+        // Boolean -> CheckBox
+        if ($varType === 0) {
+            return [
+                'caption' => $caption,
+                'name'    => $name,
+                'width'   => 'auto',
+                'add'     => 'false',
+                'edit'    => ['type' => 'Select', 'options' => [
+                    ['caption' => 'true',  'value' => 'true'],
+                    ['caption' => 'false', 'value' => 'false'],
+                ]],
+            ];
+        }
+        // Float, Integer, String ohne Profil -> freies Textfeld
+        return [
+            'caption' => $caption,
+            'name'    => $name,
+            'width'   => 'auto',
+            'add'     => '',
+            'edit'    => ['type' => 'ValidationTextBox'],
+        ];
+    }
+
+}
