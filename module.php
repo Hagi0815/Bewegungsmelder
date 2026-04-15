@@ -176,6 +176,30 @@ class MotionDetectorControl extends IPSModule
         }
     }
 
+    public function CreateActiveVariable(): void
+    {
+        $activeVarID = 0;
+        foreach (IPS_GetChildrenIDs($this->InstanceID) as $childID) {
+            if (IPS_ObjectExists($childID) && IPS_GetObject($childID)['ObjectIdent'] === 'Active') {
+                $activeVarID = $childID;
+                break;
+            }
+        }
+
+        if ($activeVarID === 0) {
+            $newVarID = IPS_CreateVariable(0);
+            IPS_SetParent($newVarID, $this->InstanceID);
+            IPS_SetIdent($newVarID, 'Active');
+            IPS_SetName($newVarID, 'Aktiv');
+            IPS_SetVariableCustomProfile($newVarID, '~Switch');
+            IPS_SetVariableCustomAction($newVarID, $this->InstanceID);
+            SetValueBoolean($newVarID, true);
+            echo 'Aktiv-Variable angelegt (ID: ' . $newVarID . ')';
+        } else {
+            echo 'Aktiv-Variable bereits vorhanden (ID: ' . $activeVarID . ')';
+        }
+    }
+
     public function RequestAction($ident, $value): void
     {
         if ($ident === 'Active') {
@@ -699,6 +723,7 @@ class MotionDetectorControl extends IPSModule
             'actions' => [
                 ['type' => 'Button', 'caption' => 'Einschalten (Test)', 'onClick' => 'MDC_SwitchOn($id);'],
                 ['type' => 'Button', 'caption' => 'Ausschalten (Test)', 'onClick' => 'MDC_SwitchOff($id);'],
+                ['type' => 'Button', 'caption' => 'Aktiv-Variable anlegen', 'onClick' => 'MDC_CreateActiveVariable($id); IPS_RequestAction($id, "dummy", 0);'],
             ],
             'status' => [
                 ['code' => 102, 'icon' => 'active', 'caption' => 'Bereit'],
