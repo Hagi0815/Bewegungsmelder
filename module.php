@@ -95,18 +95,20 @@ class MotionDetectorControl extends IPSModule
         $this->UpdateRestlaufzeitProfile();
 
         // Aktiv-Variable sicherstellen (auch bei bestehenden Instanzen)
-        $this->RegisterVariableBoolean('Active', 'Aktiv', '~Switch', 0);
-        $this->EnableAction('Active');
-
-        // Aktiv-Variable auf true setzen falls Variable neu angelegt wurde
-        // IPS_ObjectExists prüft ob die Variable schon einen gesetzten Wert hat
         $activeVarID = @$this->GetIDForIdent('Active');
-        if ($activeVarID > 0) {
-            $var = IPS_GetVariable($activeVarID);
-            // Nur setzen wenn der Wert noch nie gesetzt wurde (ValueChanged = false und Wert = false)
-            if (!$var['VariableChanged'] && $this->GetValue('Active') === false) {
-                $this->SetValue('Active', true);
-            }
+        if ($activeVarID === false || $activeVarID <= 0) {
+            // Variable existiert noch nicht – manuell anlegen
+            $newVarID = IPS_CreateVariable(0); // 0 = Boolean
+            IPS_SetParent($newVarID, $this->InstanceID);
+            IPS_SetIdent($newVarID, 'Active');
+            IPS_SetName($newVarID, 'Aktiv');
+            IPS_SetVariableCustomProfile($newVarID, '~Switch');
+            IPS_SetVariableCustomAction($newVarID, 'MDC_RequestAction');
+            SetValueBoolean($newVarID, true);
+            $this->SendDebug('ApplyChanges', 'Aktiv-Variable neu angelegt (ID: ' . $newVarID . ')', 0);
+        } else {
+            // Variable existiert – Action sicherstellen
+            IPS_SetVariableCustomAction($activeVarID, 'MDC_RequestAction');
         }
 
         // TimeScheduleVariable auch für Tag/Nacht Modus registrieren
