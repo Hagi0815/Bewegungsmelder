@@ -19,7 +19,7 @@ Das Modul unterstützt zwei Schaltpunkt-Modi (Zeitplan und Tag/Nacht), eine Manu
 
 | Variable | Typ | Beschreibung |
 |---|---|---|
-| `Aktiv` | Boolean | Aktiviert/deaktiviert das Modul. Wird beim Anlegen auf `true` gesetzt. |
+| `Aktiv` | Boolean | Aktiviert/deaktiviert das Modul. |
 | `Restlaufzeit` | Integer | Zeigt die verbleibende Zeit bis zum Ausschalten an. Einheit je nach Konfiguration (Sek./Min./Std.). |
 
 ---
