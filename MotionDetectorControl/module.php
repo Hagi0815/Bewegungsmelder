@@ -40,6 +40,9 @@ class MotionDetectorControl extends IPSModule
         // Zeitplan-Variable (Boolean)
         $this->RegisterPropertyInteger('TimeScheduleVariable', 0);
 
+        // Manuell EIN Variable
+        $this->RegisterPropertyInteger('ManualOnVariable', 0);
+
         // Schaltpunkt-Modus: 0 = Zeitplan, 1 = Tag/Nacht
         $this->RegisterPropertyInteger('ScheduleMode', 0);
 
@@ -95,17 +98,24 @@ class MotionDetectorControl extends IPSModule
         $this->UpdateRestlaufzeitProfile();
 
         // Aktiv-Variable registrieren
-        $isNew = @$this->GetIDForIdent('Active') == false;
+        $isNew = (@$this->GetIDForIdent('Active') == false);
         $this->RegisterVariableBoolean('Active', 'Aktiv', '~Switch', -1);
         $this->EnableAction('Active');
         if ($isNew) {
             $this->SetValue('Active', true);
+            $this->SendDebug('ApplyChanges', 'Aktiv-Variable neu angelegt und auf true gesetzt', 0);
         }
 
         // TimeScheduleVariable auch für Tag/Nacht Modus registrieren
         $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
         if ($switchVarID > 0 && IPS_VariableExists($switchVarID)) {
             $this->RegisterMessage($switchVarID, VM_UPDATE);
+        }
+
+        // Manuell EIN Variable registrieren
+        $manualVarID = $this->ReadPropertyInteger('ManualOnVariable');
+        if ($manualVarID > 0 && IPS_VariableExists($manualVarID)) {
+            $this->RegisterMessage($manualVarID, VM_UPDATE);
         }
 
         for ($n = 1; $n <= 3; $n++) {
@@ -146,6 +156,26 @@ class MotionDetectorControl extends IPSModule
                 $this->SwitchOn();
             } else {
                 $this->SendDebug('MessageSink', 'Keine Bewegung (Wert inaktiv)', 0);
+            }
+            return;
+        }
+
+        // Manuell EIN Variable
+        $manualVarID = $this->ReadPropertyInteger('ManualOnVariable');
+        if ($manualVarID > 0 && $SenderID === $manualVarID) {
+            $manualValue = GetValueBoolean($SenderID);
+            if ($manualValue) {
+                $this->SendDebug('MessageSink', 'Manuell EIN aktiviert → Modul deaktivieren + Licht einschalten', 0);
+                $this->SetValue('Active', false);
+                $this->SwitchOn();
+                // Timer stoppen – Licht bleibt an bis Manuell EIN wieder false
+                $this->SetTimerInterval('SwitchOffTimer', 0);
+                $this->SetTimerInterval('CountdownTimer', 0);
+                $this->SetValue('Restlaufzeit', 0);
+            } else {
+                $this->SendDebug('MessageSink', 'Manuell EIN deaktiviert → Modul aktivieren + Licht ausschalten', 0);
+                $this->SetValue('Active', true);
+                $this->SwitchOff();
             }
             return;
         }
@@ -554,6 +584,22 @@ class MotionDetectorControl extends IPSModule
         // Standard-Einschaltwert fuer String: Dropdown wenn Profil vorhanden
         $form = [
             'elements' => [
+
+                // ── Aktiv-Schalter ───────────────────────────────────────
+                ['type' => 'RowLayout', 'items' => [
+                    ['type' => 'Label', 'bold' => true, 'caption' => 'Modul Status: ' . ($this->GetValue('Active') ? '✓ Aktiv' : '✗ Deaktiviert')],
+                    ['type' => 'Button', 'caption' => $this->GetValue('Active') ? 'Deaktivieren' : 'Aktivieren',
+                        'onClick' => 'RequestAction(' . $this->GetIDForIdent("Active") . ', ' . ($this->GetValue('Active') ? 'false' : 'true') . '); IPS_RequestAction($id, "dummy", 0);'],
+                ]],
+
+                ['type' => 'Label', 'caption' => ' '],
+
+                // ── Manuell EIN ──────────────────────────────────────────
+                ['type' => 'Label', 'bold' => true, 'caption' => 'Manuell EIN'],
+                ['type' => 'Label', 'caption' => 'Wenn aktiv: Modul deaktivieren + Licht einschalten. Wenn inaktiv: Modul aktivieren + Licht ausschalten.'],
+                ['type' => 'SelectVariable', 'name' => 'ManualOnVariable', 'caption' => 'Manuell EIN Variable (Boolean)', 'validVariableType' => [0]],
+
+                ['type' => 'Label', 'caption' => ' '],
 
                 // ── Zeile 1: Bewegungsmelder + Einschalten + Ausschalten ─
                 ['type' => 'RowLayout', 'items' => [
