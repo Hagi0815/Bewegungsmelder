@@ -541,6 +541,11 @@ class MotionDetectorControl extends IPSModule
         $onType  = $this->ReadPropertyInteger('OnVariableType');
         $offType = $this->ReadPropertyInteger('OffVariableType');
 
+        // String-Feld für Standard-Einschaltwert
+        $onStringEdit = ($onType === 3 && !empty($onOptions))
+            ? ['type' => 'Select', 'options' => $onOptions]
+            : ['type' => 'ValidationTextBox'];
+
         $scheduleValueColA    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
         $scheduleValueColB    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
         $scheduleValueOffColA = $this->BuildValueColumn($noMotionOptions, $noMotionType, 'ValueOff', 'Wert bei keine Bewegung');
@@ -579,6 +584,7 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'CheckBox',      'name' => 'OnValueBool',  'caption' => 'Boolean EIN'],
                         ['type' => 'NumberSpinner', 'name' => 'OnValueFloat', 'caption' => 'Float EIN', 'digits' => 2],
                         ['type' => 'NumberSpinner', 'name' => 'OnValueInt',   'caption' => 'Integer EIN'],
+                        array_merge(['name' => 'OnValueString', 'caption' => 'String EIN'], $onStringEdit),
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
