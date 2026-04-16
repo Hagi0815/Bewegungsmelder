@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 class MotionDetectorControl extends IPSModule
 {
+    public function GetVersion(): string
+    {
+        return 'v50-2026-04-16';
+    }
+
     public function Create(): void
     {
         parent::Create();
