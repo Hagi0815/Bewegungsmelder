@@ -6,34 +6,25 @@ class MotionDetectorControl extends IPSModule
 {
     public function GetVersion(): string
     {
-        return 'v50-2026-04-16';
+        return 'v52-2026-04-16';
     }
 
     public function Create(): void
     {
         parent::Create();
 
-        // Bewegungsmelder
         $this->RegisterPropertyInteger('MotionSensor1', 0);
         $this->RegisterPropertyInteger('MotionSensor2', 0);
         $this->RegisterPropertyInteger('MotionSensor3', 0);
-
-        // Einschaltdauer
         $this->RegisterPropertyInteger('DurationValue', 30);
         $this->RegisterPropertyInteger('DurationUnit', 0);
-
-        // Einschalten-Variable
         $this->RegisterPropertyInteger('OnVariable', 0);
         $this->RegisterPropertyInteger('OnVariableType', 0);
         $this->RegisterPropertyBoolean('OnValueBool', true);
         $this->RegisterPropertyFloat('OnValueFloat', 1.0);
         $this->RegisterPropertyInteger('OnValueInt', 1);
         $this->RegisterPropertyString('OnValueString', 'EIN');
-
-        // Ausschalten-Variable
         $this->RegisterPropertyInteger('OffVariable', 0);
-
-        // Keine Bewegung Variable (optional, für Zeitplan-Wert bei keine Bewegung)
         $this->RegisterPropertyInteger('NoMotionVariable', 0);
         $this->RegisterPropertyInteger('NoMotionVariableType', 0);
         $this->RegisterPropertyString('NoMotionValueString', '');
@@ -42,19 +33,10 @@ class MotionDetectorControl extends IPSModule
         $this->RegisterPropertyFloat('OffValueFloat', 0.0);
         $this->RegisterPropertyInteger('OffValueInt', 0);
         $this->RegisterPropertyString('OffValueString', 'AUS');
-
-        // Zeitplan-Variable (Boolean)
         $this->RegisterPropertyInteger('TimeScheduleVariable', 0);
-
-        // Manuell EIN Variable
         $this->RegisterPropertyInteger('ManualOnVariable', 0);
-
-        // Schaltpunkt-Modus: 0 = Zeitplan, 1 = Tag/Nacht
         $this->RegisterPropertyInteger('ScheduleMode', 0);
-
-        // Zeitplan A (Boolean = false oder keine Variable)
         $this->RegisterPropertyString('TimeScheduleA', '[]');
-        // Aktion beim Umschalten der Tag/Nacht-Variable (Modus 1)
         $this->RegisterPropertyInteger('SwitchActionVariableA', 0);
         $this->RegisterPropertyInteger('SwitchActionTypeA', 0);
         $this->RegisterPropertyBoolean('SwitchActionBoolA', false);
@@ -67,19 +49,13 @@ class MotionDetectorControl extends IPSModule
         $this->RegisterPropertyFloat('SwitchActionFloatB', 0.0);
         $this->RegisterPropertyInteger('SwitchActionIntB', 0);
         $this->RegisterPropertyString('SwitchActionStringB', '');
-
-
-        // Zeitplan B (Boolean = true)
         $this->RegisterPropertyString('TimeScheduleB', '[]');
 
         $this->RegisterTimer('SwitchOffTimer', 0, 'MDC_SwitchOff(' . $this->InstanceID . ');');
-
-        // Aktivierungs-Variable (true = aktiv, false = deaktiviert)
         $this->RegisterVariableBoolean('Active', 'Aktiv', '~Switch', 0);
         $this->EnableAction('Active');
         $this->RegisterTimer('CountdownTimer', 0, 'MDC_UpdateCountdown(' . $this->InstanceID . ');');
 
-        // Profile für Restlaufzeit
         if (!IPS_VariableProfileExists('MDC.Seconds')) {
             IPS_CreateVariableProfile('MDC.Seconds', 1);
             IPS_SetVariableProfileText('MDC.Seconds', '', ' Sek.');
@@ -93,7 +69,6 @@ class MotionDetectorControl extends IPSModule
             IPS_SetVariableProfileText('MDC.Hours', '', ' Std.');
         }
 
-        // Statusvariable Restlaufzeit
         $this->RegisterVariableInteger('Restlaufzeit', 'Restlaufzeit', 'MDC.Seconds', 0);
     }
 
@@ -103,7 +78,6 @@ class MotionDetectorControl extends IPSModule
 
         $this->UpdateRestlaufzeitProfile();
 
-        // Aktiv-Variable registrieren
         $isNew = (@$this->GetIDForIdent('Active') == false);
         $this->RegisterVariableBoolean('Active', 'Aktiv', '~Switch', -1);
         $this->EnableAction('Active');
@@ -112,13 +86,11 @@ class MotionDetectorControl extends IPSModule
             $this->SendDebug('ApplyChanges', 'Aktiv-Variable neu angelegt und auf true gesetzt', 0);
         }
 
-        // TimeScheduleVariable auch für Tag/Nacht Modus registrieren
         $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
         if ($switchVarID > 0 && IPS_VariableExists($switchVarID)) {
             $this->RegisterMessage($switchVarID, VM_UPDATE);
         }
 
-        // Manuell EIN Variable registrieren
         $manualVarID = $this->ReadPropertyInteger('ManualOnVariable');
         if ($manualVarID > 0 && IPS_VariableExists($manualVarID)) {
             $this->RegisterMessage($manualVarID, VM_UPDATE);
@@ -130,7 +102,6 @@ class MotionDetectorControl extends IPSModule
                 $this->RegisterMessage($id, VM_UPDATE);
             }
         }
-
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
@@ -139,7 +110,6 @@ class MotionDetectorControl extends IPSModule
             return;
         }
 
-        // Prüfen ob Sender ein Bewegungsmelder ist
         $sensorIDs = [];
         for ($n = 1; $n <= 3; $n++) {
             $id = $this->ReadPropertyInteger('MotionSensor' . $n);
@@ -147,7 +117,6 @@ class MotionDetectorControl extends IPSModule
         }
 
         if (in_array($SenderID, $sensorIDs, true)) {
-            // Modul deaktiviert?
             if (!$this->GetValue('Active')) {
                 $this->SendDebug('MessageSink', 'Modul deaktiviert – Bewegung ignoriert', 0);
                 return;
@@ -166,7 +135,6 @@ class MotionDetectorControl extends IPSModule
             return;
         }
 
-        // Manuell EIN Variable
         $manualVarID = $this->ReadPropertyInteger('ManualOnVariable');
         if ($manualVarID > 0 && $SenderID === $manualVarID) {
             $manualValue = GetValueBoolean($SenderID);
@@ -174,7 +142,6 @@ class MotionDetectorControl extends IPSModule
                 $this->SendDebug('MessageSink', 'Manuell EIN aktiviert → Modul deaktivieren + Licht einschalten', 0);
                 $this->SetValue('Active', false);
                 $this->SwitchOn();
-                // Timer stoppen – Licht bleibt an bis Manuell EIN wieder false
                 $this->SetTimerInterval('SwitchOffTimer', 0);
                 $this->SetTimerInterval('CountdownTimer', 0);
                 $this->SetValue('Restlaufzeit', 0);
@@ -186,7 +153,6 @@ class MotionDetectorControl extends IPSModule
             return;
         }
 
-        // Im Tag/Nacht Modus: Aktion beim Umschalten ausführen
         if ($this->ReadPropertyInteger('ScheduleMode') === 1) {
             $switchVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
             if ($SenderID === $switchVarID) {
@@ -204,7 +170,6 @@ class MotionDetectorControl extends IPSModule
                 break;
             }
         }
-
         if ($activeVarID === 0) {
             $newVarID = IPS_CreateVariable(0);
             IPS_SetParent($newVarID, $this->InstanceID);
@@ -230,21 +195,31 @@ class MotionDetectorControl extends IPSModule
 
     public function SwitchOn(): void
     {
+        $this->SendDebug('SwitchOn', 'START', 0);
         $targetID = $this->ReadPropertyInteger('OnVariable');
+        $this->SendDebug('SwitchOn', 'TargetID: ' . $targetID, 0);
         if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+            $this->SendDebug('SwitchOn', 'Abgebrochen: Einschalten-Variable nicht gesetzt', 0);
             return;
         }
 
         $scheduleValue = $this->GetScheduleValue();
         $type = $this->ReadPropertyInteger('OnVariableType');
+        $mode = $this->ReadPropertyInteger('ScheduleMode');
+        $modeLabel = $mode === 0 ? 'Zeitplan' : 'Tag/Nacht';
 
         if ($scheduleValue !== null) {
+            $this->SendDebug('SwitchOn', 'Modus: ' . $modeLabel . ' | Schaltpunkt-Wert: ' . $scheduleValue, 0);
             if ($type === 0) {
                 $this->SendValue($targetID, ($scheduleValue === 'true' || $scheduleValue === '1'), $type);
             } else {
                 $this->SendValue($targetID, $scheduleValue, $type);
             }
+        } elseif ($mode === 1) {
+            $this->SendDebug('SwitchOn', 'Tag/Nacht Modus: Kein Eintrag im aktiven Plan → nicht einschalten', 0);
+            return;
         } else {
+            $this->SendDebug('SwitchOn', 'Modus: ' . $modeLabel . ' | Kein Schaltpunkt aktiv → Standard-Einschaltwert', 0);
             $this->SendOnValue($targetID, $type);
         }
 
@@ -255,9 +230,9 @@ class MotionDetectorControl extends IPSModule
             case 2: $seconds = $value * 3600; break;
             default: $seconds = $value; break;
         }
+        $unitLabel = ['Sekunden', 'Minuten', 'Stunden'][$unit] ?? 'Sekunden';
+        $this->SendDebug('SwitchOn', 'Timer gesetzt: ' . $value . ' ' . $unitLabel . ' (' . $seconds . ' Sek.)', 0);
         $this->SetTimerInterval('SwitchOffTimer', $seconds * 1000);
-
-        // Restlaufzeit initialisieren und Countdown-Timer starten (jede Sekunde)
         $this->SetValue('Restlaufzeit', $value);
         $this->SetTimerInterval('CountdownTimer', 1000);
     }
@@ -267,46 +242,38 @@ class MotionDetectorControl extends IPSModule
         $this->SetTimerInterval('SwitchOffTimer', 0);
         $this->SetTimerInterval('CountdownTimer', 0);
         $this->SetValue('Restlaufzeit', 0);
+        $this->SendDebug('SwitchOff', 'Timer abgelaufen oder manuell ausgeschaltet', 0);
 
-        // Zeitplan-Wert für "keine Bewegung" prüfen
         $scheduleOffValue = $this->GetScheduleOffValue();
 
         if ($scheduleOffValue !== null) {
-            // Eigene NoMotion-Variable verwenden falls konfiguriert, sonst OffVariable
             $noMotionID = $this->ReadPropertyInteger('NoMotionVariable');
             if ($noMotionID > 0 && IPS_VariableExists($noMotionID)) {
                 $type = $this->ReadPropertyInteger('NoMotionVariableType');
                 $targetID = $noMotionID;
+                $this->SendDebug('SwitchOff', 'Schaltpunkt "keine Bewegung": ' . $scheduleOffValue . ' → NoMotion-Variable (ID: ' . $noMotionID . ')', 0);
             } else {
                 $targetID = $this->ReadPropertyInteger('OffVariable');
                 if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+                    $this->SendDebug('SwitchOff', 'Abgebrochen: Ausschalten-Variable nicht gesetzt', 0);
                     return;
                 }
                 $type = $this->ReadPropertyInteger('OffVariableType');
+                $this->SendDebug('SwitchOff', 'Schaltpunkt "keine Bewegung": ' . $scheduleOffValue . ' → Off-Variable (ID: ' . $targetID . ')', 0);
             }
-            if ($scheduleOffValue !== '' && $scheduleOffValue !== null) {
-                // Schaltpunkt-Wert verwenden
-                if ($type === 0) {
-                    $this->SendValue($targetID, ($scheduleOffValue === 'true' || $scheduleOffValue === '1'), $type);
-                } else {
-                    $this->SendValue($targetID, $scheduleOffValue, $type);
-                }
+            if ($type === 0) {
+                $this->SendValue($targetID, ($scheduleOffValue === 'true' || $scheduleOffValue === '1'), $type);
             } else {
-                // NoMotionValueString als Fallback
-                $noMotionStr = $this->ReadPropertyString('NoMotionValueString');
-                if ($type === 3 && $noMotionStr !== '') {
-                    RequestAction($targetID, $noMotionStr);
-                } else {
-                    $this->SendOffValue($targetID, $type);
-                }
+                $this->SendValue($targetID, $scheduleOffValue, $type);
             }
         } else {
-            // Standard Ausschalten
             $targetID = $this->ReadPropertyInteger('OffVariable');
             if ($targetID <= 0 || !IPS_VariableExists($targetID)) {
+                $this->SendDebug('SwitchOff', 'Abgebrochen: Ausschalten-Variable nicht gesetzt', 0);
                 return;
             }
             $type = $this->ReadPropertyInteger('OffVariableType');
+            $this->SendDebug('SwitchOff', 'Kein Schaltpunkt aktiv → Standard-Ausschaltwert (ID: ' . $targetID . ')', 0);
             $this->SendOffValue($targetID, $type);
         }
     }
@@ -337,8 +304,6 @@ class MotionDetectorControl extends IPSModule
                 break;
         }
     }
-
-    // ── Hilfsmethoden ────────────────────────────────────────────────────
 
     private function SendValue($targetID, $value, $type): void
     {
@@ -388,7 +353,6 @@ class MotionDetectorControl extends IPSModule
         }
 
         $type = $this->ReadPropertyInteger('SwitchActionType' . $suffix);
-
         switch ($type) {
             case 0:
                 $val = $this->ReadPropertyBoolean('SwitchActionBool' . $suffix);
@@ -454,7 +418,6 @@ class MotionDetectorControl extends IPSModule
 
     private function GetDayNightEntry()
     {
-        // Tag/Nacht Variable prüfen (True = Zeitplan A, False = Zeitplan B equivalent)
         $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
         $useScheduleB = false;
         if ($scheduleVarID > 0 && IPS_VariableExists($scheduleVarID)) {
@@ -468,7 +431,6 @@ class MotionDetectorControl extends IPSModule
             return null;
         }
 
-        // Im Tag/Nacht Modus gibt es keinen Zeitfilter - immer aktiv
         foreach ($schedule as $entry) {
             if (!isset($entry['Value'])) {
                 continue;
@@ -483,17 +445,14 @@ class MotionDetectorControl extends IPSModule
         return null;
     }
 
-    // Returns array ['on' => value, 'off' => value] or null if no match
     private function GetScheduleEntry()
     {
         $mode = $this->ReadPropertyInteger('ScheduleMode');
 
         if ($mode === 1) {
-            // Tag/Nacht Modus
             return $this->GetDayNightEntry();
         }
 
-        // Zeitplan Modus
         $scheduleVarID = $this->ReadPropertyInteger('TimeScheduleVariable');
         $useScheduleB = false;
         if ($scheduleVarID > 0 && IPS_VariableExists($scheduleVarID)) {
@@ -558,74 +517,50 @@ class MotionDetectorControl extends IPSModule
     {
         $onVarID       = $this->ReadPropertyInteger('OnVariable');
         $scheduleMode  = $this->ReadPropertyInteger('ScheduleMode');
-
-        // Profilwerte für Aktionsvariablen
         $switchVarAID     = $this->ReadPropertyInteger('SwitchActionVariableA');
         $switchVarBID     = $this->ReadPropertyInteger('SwitchActionVariableB');
         $switchOptionsA   = $this->GetProfileOptions($switchVarAID);
         $switchOptionsB   = $this->GetProfileOptions($switchVarBID);
         $switchTypeA      = $this->ReadPropertyInteger('SwitchActionTypeA');
         $switchTypeB      = $this->ReadPropertyInteger('SwitchActionTypeB');
-
-        // String-Feld für Aktionsvariable A
         $switchStringEditA = ($switchTypeA === 3 && !empty($switchOptionsA))
             ? ['type' => 'Select', 'options' => $switchOptionsA]
             : ['type' => 'ValidationTextBox'];
-
-        // String-Feld für Aktionsvariable B
         $switchStringEditB = ($switchTypeB === 3 && !empty($switchOptionsB))
             ? ['type' => 'Select', 'options' => $switchOptionsB]
             : ['type' => 'ValidationTextBox'];
         $offVarID      = $this->ReadPropertyInteger('OffVariable');
         $noMotionVarID = $this->ReadPropertyInteger('NoMotionVariable');
-
         $onOptions       = $this->GetProfileOptions($onVarID);
         $offOptions      = $this->GetProfileOptions($offVarID);
         $noMotionOptions = $this->GetProfileOptions($noMotionVarID);
-
         $noMotionType = $this->ReadPropertyInteger('NoMotionVariableType');
-
-        // String-Feld für NoMotion-Variable
         $noMotionStringEdit = ($noMotionType === 3 && !empty($noMotionOptions))
             ? ['type' => 'Select', 'options' => $noMotionOptions]
             : ['type' => 'ValidationTextBox'];
-
         $onType  = $this->ReadPropertyInteger('OnVariableType');
         $offType = $this->ReadPropertyInteger('OffVariableType');
-
-        // String-Feld für Standard-Einschaltwert
         $onStringEdit = ($onType === 3 && !empty($onOptions))
             ? ['type' => 'Select', 'options' => $onOptions]
             : ['type' => 'ValidationTextBox'];
-
         $scheduleValueColA    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
         $scheduleValueColB    = $this->BuildValueColumn($onOptions,  $onType,  'Value',    'Wert bei Bewegung');
         $scheduleValueOffColA = $this->BuildValueColumn($noMotionOptions, $noMotionType, 'ValueOff', 'Wert bei keine Bewegung');
         $scheduleValueOffColB = $this->BuildValueColumn($noMotionOptions, $noMotionType, 'ValueOff', 'Wert bei keine Bewegung');
 
-        // Standard-Einschaltwert fuer String: Dropdown wenn Profil vorhanden
         $form = [
             'elements' => [
-
-                // ── Aktiv-Schalter ───────────────────────────────────────
                 ['type' => 'RowLayout', 'items' => [
                     ['type' => 'Label', 'bold' => true, 'caption' => 'Modul Status: ' . ($this->GetValue('Active') ? '✓ Aktiv' : '✗ Deaktiviert')],
                     ['type' => 'Button', 'caption' => $this->GetValue('Active') ? 'Deaktivieren' : 'Aktivieren',
                         'onClick' => 'RequestAction(' . $this->GetIDForIdent("Active") . ', ' . ($this->GetValue('Active') ? 'false' : 'true') . '); IPS_RequestAction($id, "dummy", 0);'],
                 ]],
-
                 ['type' => 'Label', 'caption' => ' '],
-
-                // ── Manuell EIN ──────────────────────────────────────────
                 ['type' => 'Label', 'bold' => true, 'caption' => 'Manuell EIN'],
                 ['type' => 'Label', 'caption' => 'Wenn aktiv: Modul deaktivieren + Licht einschalten. Wenn inaktiv: Modul aktivieren + Licht ausschalten.'],
                 ['type' => 'SelectVariable', 'name' => 'ManualOnVariable', 'caption' => 'Manuell EIN Variable (Boolean)', 'validVariableType' => [0]],
-
                 ['type' => 'Label', 'caption' => ' '],
-
-                // ── Zeile 1: Bewegungsmelder + Einschalten + Ausschalten ─
                 ['type' => 'RowLayout', 'items' => [
-
                     ['type' => 'ExpansionPanel', 'caption' => 'Bewegungsmelder', 'expanded' => true, 'items' => [
                         ['type' => 'SelectVariable', 'name' => 'MotionSensor1', 'caption' => 'Bewegungsmelder 1', 'validVariableType' => [0, 1, 2]],
                         ['type' => 'SelectVariable', 'name' => 'MotionSensor2', 'caption' => 'Bewegungsmelder 2 (optional)', 'validVariableType' => [0, 1, 2]],
@@ -636,10 +571,9 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'NumberSpinner', 'name' => 'OffValueInt', 'caption' => ' ', 'visible' => false],
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Label', 'caption' => ' '],
-                        ['type' => 'SelectVariable', 'name' => 'NoMotionVariable', 'caption' => ' ', 'visible' => false],
+                        ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Select', 'name' => 'NoMotionVariableType', 'caption' => ' ', 'visible' => false, 'options' => [['caption' => ' ', 'value' => 0]]],
                     ]],
-
                     ['type' => 'ExpansionPanel', 'caption' => 'Einschalten', 'expanded' => true, 'items' => [
                         ['type' => 'SelectVariable', 'name' => 'OnVariable', 'caption' => 'Variable zum Einschalten'],
                         ['type' => 'Select', 'name' => 'OnVariableType', 'caption' => 'Variablentyp', 'options' => [
@@ -658,7 +592,6 @@ class MotionDetectorControl extends IPSModule
                         ['type' => 'Label', 'caption' => ' '],
                         ['type' => 'Select', 'name' => 'OffVariableType', 'caption' => ' ', 'visible' => false, 'options' => [['caption' => ' ', 'value' => 0]]],
                     ]],
-
                     ['type' => 'ExpansionPanel', 'caption' => 'Ausschalten', 'expanded' => true, 'items' => [
                         ['type' => 'SelectVariable', 'name' => 'OffVariable', 'caption' => 'Variable zum Ausschalten'],
                         ['type' => 'Select', 'name' => 'OffVariableType', 'caption' => 'Variablentyp', 'options' => [
@@ -683,10 +616,7 @@ class MotionDetectorControl extends IPSModule
                         array_merge(['name' => 'NoMotionValueString', 'caption' => 'String (keine Bewegung)'], $noMotionStringEdit),
                     ]],
                 ]],
-
                 ['type' => 'Label', 'caption' => ' '],
-
-                // ── Einschaltdauer ───────────────────────────────────────
                 ['type' => 'Label', 'bold' => true, 'caption' => 'Einschaltdauer'],
                 ['type' => 'RowLayout', 'items' => [
                     ['type' => 'NumberSpinner', 'name' => 'DurationValue', 'caption' => 'Dauer', 'minimum' => 1, 'maximum' => 9999],
@@ -696,10 +626,7 @@ class MotionDetectorControl extends IPSModule
                         ['caption' => 'Stunden',  'value' => 2],
                     ]],
                 ]],
-
                 ['type' => 'Label', 'caption' => ' '],
-
-                // ── Schaltpunkte ─────────────────────────────────────────
                 ['type' => 'Label', 'bold' => true, 'caption' => 'Schaltpunkte'],
                 ['type' => 'Select', 'name' => 'ScheduleMode', 'caption' => 'Modus', 'options' => [
                     ['caption' => 'Zeitplan (Uhrzeit)', 'value' => 0],
@@ -710,9 +637,8 @@ class MotionDetectorControl extends IPSModule
                         ? 'Zeitplan-Umschalter (Boolean, leer = Zeitplan A aktiv)'
                         : 'Tag/Nacht Variable (Boolean: false = A, true = B)',
                     'validVariableType' => [0]],
-
                 ['type' => 'Label', 'caption' => $scheduleMode === 0 ? 'Zeitplan A (Boolean = false oder keine Variable gewählt)' : 'Tag/Nacht A (Boolean = false oder keine Variable)'],
-                ['type' => 'List', 'name' => 'TimeScheduleA', 'caption' => $scheduleMode === 0 ? 'Zeitplan A' : 'Tag/Nacht A', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
+                ['type' => 'List', 'name' => 'TimeScheduleA', 'caption' => 'Zeitplan A', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => array_merge(
                         $scheduleMode === 0 ? [
                             ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
@@ -724,11 +650,9 @@ class MotionDetectorControl extends IPSModule
                         ]
                     ),
                 ],
-
                 ['type' => 'Label', 'caption' => ' '],
-
                 ['type' => 'Label', 'caption' => $scheduleMode === 0 ? 'Zeitplan B (Boolean = true)' : 'Tag/Nacht B (Boolean = true)'],
-                ['type' => 'List', 'name' => 'TimeScheduleB', 'caption' => $scheduleMode === 0 ? 'Zeitplan B' : 'Tag/Nacht B', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
+                ['type' => 'List', 'name' => 'TimeScheduleB', 'caption' => 'Zeitplan B', 'rowCount' => 5, 'add' => true, 'delete' => true,
                     'columns' => array_merge(
                         $scheduleMode === 0 ? [
                             ['caption' => 'Von', 'name' => 'From', 'width' => '100px', 'add' => '07:00', 'edit' => ['type' => 'ValidationTextBox']],
@@ -740,12 +664,9 @@ class MotionDetectorControl extends IPSModule
                         ]
                     ),
                 ],
-
-                // ── Aktion beim Umschalten ──────────────────────────────
                 ['type' => 'Label', 'caption' => ' '],
                 ['type' => 'Label', 'bold' => true, 'caption' => 'Aktion beim Umschalten' . ($scheduleMode === 1 ? ' der Tag/Nacht-Variable' : ' (nur im Tag/Nacht Modus aktiv)')],
                 ['type' => 'Label', 'caption' => 'Wird sofort ausgeführt wenn die Boolean-Variable umschaltet'],
-
                 ['type' => 'Label', 'caption' => 'Aktion bei Plan A (Boolean = false)'],
                 ['type' => 'SelectVariable', 'name' => 'SwitchActionVariableA', 'caption' => 'Variable'],
                 ['type' => 'Select', 'name' => 'SwitchActionTypeA', 'caption' => 'Typ', 'options' => [
@@ -760,7 +681,6 @@ class MotionDetectorControl extends IPSModule
                     ['type' => 'NumberSpinner', 'name' => 'SwitchActionIntA',   'caption' => 'Integer'],
                     array_merge(['name' => 'SwitchActionStringA', 'caption' => 'String'], $switchStringEditA),
                 ]],
-
                 ['type' => 'Label', 'caption' => ' '],
                 ['type' => 'Label', 'caption' => 'Aktion bei Plan B (Boolean = true)'],
                 ['type' => 'SelectVariable', 'name' => 'SwitchActionVariableB', 'caption' => 'Variable'],
@@ -777,7 +697,6 @@ class MotionDetectorControl extends IPSModule
                     array_merge(['name' => 'SwitchActionStringB', 'caption' => 'String'], $switchStringEditB),
                 ]],
             ],
-
             'actions' => [
                 ['type' => 'Button', 'caption' => 'Einschalten (Test)', 'onClick' => 'MDC_SwitchOn($id);'],
                 ['type' => 'Button', 'caption' => 'Ausschalten (Test)', 'onClick' => 'MDC_SwitchOff($id);'],
@@ -815,7 +734,6 @@ class MotionDetectorControl extends IPSModule
 
     private function BuildValueColumn(array $profileOptions, int $varType = 3, string $name = 'Value', string $caption = 'Einschaltwert'): array
     {
-        // String mit Profil -> Dropdown
         if ($varType === 3 && !empty($profileOptions)) {
             return [
                 'caption' => $caption,
@@ -825,7 +743,6 @@ class MotionDetectorControl extends IPSModule
                 'edit'    => ['type' => 'Select', 'options' => $profileOptions],
             ];
         }
-        // Boolean -> CheckBox
         if ($varType === 0) {
             return [
                 'caption' => $caption,
@@ -838,7 +755,6 @@ class MotionDetectorControl extends IPSModule
                 ]],
             ];
         }
-        // Float, Integer, String ohne Profil -> freies Textfeld
         return [
             'caption' => $caption,
             'name'    => $name,
@@ -847,5 +763,4 @@ class MotionDetectorControl extends IPSModule
             'edit'    => ['type' => 'ValidationTextBox'],
         ];
     }
-
 }

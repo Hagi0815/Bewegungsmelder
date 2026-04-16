@@ -19,7 +19,7 @@ Das Modul unterstützt zwei Schaltpunkt-Modi (Zeitplan und Tag/Nacht), eine Manu
 
 | Variable | Typ | Beschreibung |
 |---|---|---|
-| `Aktiv` | Boolean | Aktiviert/deaktiviert das Modul. |
+| `Aktiv` | Boolean | Aktiviert/deaktiviert das Modul. Wird beim Anlegen auf `true` gesetzt. |
 | `Restlaufzeit` | Integer | Zeigt die verbleibende Zeit bis zum Ausschalten an. Einheit je nach Konfiguration (Sek./Min./Std.). |
 
 ---
@@ -206,6 +206,7 @@ Variable wieder auf `false`:
 
 ## Installation
 
-1. In der IPS-Verwaltungskonsole: **Modulverwaltung → + → URL:** `https://github.com/Hagi0815/Bewegungsmelder`
-2. Instanz anlegen: Objektbaum → `+` → Instanz → **MotionDetectorControl**
-3. Konfiguration speichern – die Variablen `Aktiv` und `Restlaufzeit` werden automatisch angelegt
+1. Ordner `MotionDetectorControl` nach `modules/Bewegungsmelder/` in IP-Symcon kopieren
+2. In der IPS-Verwaltungskonsole: **Modulverwaltung → + → URL:** `https://github.com/Hagi0815/Bewegungsmelder`
+3. Instanz anlegen: Objektbaum → `+` → Instanz → **MotionDetectorControl**
+4. Konfiguration speichern – die Variablen `Aktiv` und `Restlaufzeit` werden automatisch angelegt
