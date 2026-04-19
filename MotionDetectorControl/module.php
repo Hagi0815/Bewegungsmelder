@@ -189,6 +189,17 @@ class MotionDetectorControl extends IPSModule
         if ($ident === 'Active') {
             $this->SetValue('Active', (bool) $value);
             $this->SendDebug('RequestAction', 'Modul ' . ($value ? 'aktiviert' : 'deaktiviert'), 0);
+
+            // Beim Deaktivieren: laufenden Timer stoppen ohne Licht auszuschalten
+            if (!(bool) $value) {
+                $remaining = $this->GetValue('Restlaufzeit');
+                if ($remaining > 0) {
+                    $this->SendDebug('RequestAction', 'Timer gestoppt (Restlaufzeit: ' . $remaining . ') – Licht bleibt an', 0);
+                    $this->SetTimerInterval('SwitchOffTimer', 0);
+                    $this->SetTimerInterval('CountdownTimer', 0);
+                    $this->SetValue('Restlaufzeit', 0);
+                }
+            }
             return;
         }
     }
