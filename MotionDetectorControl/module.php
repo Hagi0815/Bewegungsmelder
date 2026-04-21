@@ -320,8 +320,8 @@ class MotionDetectorControl extends IPSModule
     {
         switch ($type) {
             case 0: RequestAction($targetID, (bool) $value); break;
-            case 1: RequestAction($targetID, (float) $value); break;
-            case 2: RequestAction($targetID, (int) $value); break;
+            case 1: SetValueFloat($targetID, (float) $value); break;
+            case 2: SetValueInteger($targetID, (int) $value); break;
             case 3: RequestAction($targetID, (string) $value); break;
         }
     }
@@ -330,8 +330,8 @@ class MotionDetectorControl extends IPSModule
     {
         switch ($type) {
             case 0: RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OnValueBool')); break;
-            case 1: RequestAction($targetID, $this->ReadPropertyFloat('OnValueFloat')); break;
-            case 2: RequestAction($targetID, $this->ReadPropertyInteger('OnValueInt')); break;
+            case 1: SetValueFloat($targetID, $this->ReadPropertyFloat('OnValueFloat')); break;
+            case 2: SetValueInteger($targetID, $this->ReadPropertyInteger('OnValueInt')); break;
             case 3: RequestAction($targetID, $this->ReadPropertyString('OnValueString')); break;
         }
     }
@@ -340,8 +340,8 @@ class MotionDetectorControl extends IPSModule
     {
         switch ($type) {
             case 0: RequestAction($targetID, (bool) $this->ReadPropertyBoolean('OffValueBool')); break;
-            case 1: RequestAction($targetID, $this->ReadPropertyFloat('OffValueFloat')); break;
-            case 2: RequestAction($targetID, $this->ReadPropertyInteger('OffValueInt')); break;
+            case 1: SetValueFloat($targetID, $this->ReadPropertyFloat('OffValueFloat')); break;
+            case 2: SetValueInteger($targetID, $this->ReadPropertyInteger('OffValueInt')); break;
             case 3: RequestAction($targetID, $this->ReadPropertyString('OffValueString')); break;
         }
     }
